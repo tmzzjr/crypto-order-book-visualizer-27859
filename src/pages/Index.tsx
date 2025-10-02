@@ -8,7 +8,7 @@ import OrderBookDisplay from "@/components/OrderBookDisplay";
 import { ApiConfig } from "@/types/orderbook";
 
 const Index = () => {
-  const { user, loading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const [apiConfig, setApiConfig] = useState<ApiConfig | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
 
@@ -45,14 +45,6 @@ const Index = () => {
     setIsConfigured(false);
     setApiConfig(null);
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-xl">Carregando...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
