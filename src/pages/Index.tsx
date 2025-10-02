@@ -54,10 +54,6 @@ const Index = () => {
     );
   }
 
-  if (!user) {
-    return <LoginForm />;
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="container mx-auto px-4 py-8">
@@ -71,13 +67,15 @@ const Index = () => {
                 Crypto Order Book
               </h1>
             </div>
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
-            >
-              Sair
-            </Button>
+            {user && (
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
+              >
+                Sair
+              </Button>
+            )}
           </div>
           <p className="text-slate-400 text-lg max-w-2xl mx-auto">
             Visualize order books completos de corretoras de crypto em tempo real com dados precisos e interface profissional
