@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ApiConfig } from "@/types/orderbook";
@@ -98,6 +98,10 @@ const SymbolSelector = ({ apiConfig, onSymbolChange }: SymbolSelectorProps) => {
   const [selectedSymbol, setSelectedSymbol] = useState(apiConfig.symbol);
   
   const availableSymbols = EXCHANGE_SYMBOLS[apiConfig.exchange] || [];
+
+  useEffect(() => {
+    setSelectedSymbol(apiConfig.symbol);
+  }, [apiConfig.symbol, apiConfig.exchange]);
 
   const handleSymbolChange = (newSymbol: string) => {
     setSelectedSymbol(newSymbol);
