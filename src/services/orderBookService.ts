@@ -175,23 +175,24 @@ class OrderBookService {
         throw new Error("Dados inválidos da API KCex - resposta vazia");
       }
 
-      // Check if the response is HTML (error page)
-      if (typeof proxyData.contents === 'string' && proxyData.contents.includes('<html>')) {
-        throw new Error("API KCex retornou página de erro HTML");
+      // Check if the response is HTML (error page) - case insensitive
+      if (typeof proxyData.contents === 'string' && 
+          (proxyData.contents.toLowerCase().includes('<html') || proxyData.contents.includes('403 ERROR'))) {
+        throw new Error("API KCex bloqueou a requisição (403). O par pode não estar disponível ou a API está temporariamente indisponível.");
       }
       
       const data = JSON.parse(proxyData.contents);
       console.log("KCex API response:", data);
 
       if (!data.bids || !data.asks) {
-        throw new Error("Dados inválidos da API KCex - estrutura incorreta");
+        throw new Error("Dados inválidos da API KCex - estrutura incorreta. O par pode não existir nesta corretora.");
       }
 
       return this.transformKcexData(data, config.symbol);
     } catch (error) {
       console.error("Error in fetchKcexOrderBook:", error);
       if (error instanceof SyntaxError) {
-        throw new Error("Erro ao processar dados da KCex - formato inválido");
+        throw new Error("API KCex bloqueou a requisição. Tente outro par ou aguarde alguns minutos.");
       }
       throw error;
     }
