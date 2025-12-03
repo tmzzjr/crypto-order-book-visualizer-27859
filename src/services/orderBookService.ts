@@ -154,48 +154,59 @@ class OrderBookService {
   }
 
   private async fetchKcexOrderBook(config: ApiConfig): Promise<OrderBook> {
-    // KCex symbol mapping - removing any format conversion for now
-    const originalUrl = `https://api.kcex.com/sapi/v1/depth?symbol=${config.symbol}&limit=1000`;
-    const url = `${this.baseUrls.kcex}${encodeURIComponent(originalUrl)}`;
+    // KCex symbol mapping - uses underscore format like BTC_USDT
+    const symbol = config.symbol.includes('_') ? config.symbol : config.symbol.replace(/([A-Z]+)(USDT|USDC)$/, '$1_$2');
     
-    try {
-      console.log("Fetching from KCex URL:", url);
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("KCex API Error:", errorText);
-        throw new Error(`Erro da API KCex: ${response.status} - ${errorText}`);
-      }
+    // Try multiple proxy services for KCex
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(`https://api.kcex.com/sapi/v1/depth?symbol=${symbol}&limit=1000`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.kcex.com/sapi/v1/depth?symbol=${symbol}&limit=1000`)}`,
+      `${this.baseUrls.kcex}${encodeURIComponent(`https://api.kcex.com/sapi/v1/depth?symbol=${symbol}&limit=1000`)}`
+    ];
+    
+    let lastError: Error | null = null;
+    
+    for (const url of proxies) {
+      try {
+        console.log("Fetching from KCex URL:", url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
 
-      const proxyData = await response.json();
-      
-      if (!proxyData.contents) {
-        throw new Error("Dados inválidos da API KCex - resposta vazia");
-      }
+        const responseData = await response.json();
+        
+        // Handle different proxy response formats
+        let data = responseData;
+        if (responseData.contents) {
+          // allorigins format
+          if (typeof responseData.contents === 'string') {
+            if (responseData.contents.toLowerCase().includes('<html') || responseData.contents.includes('403')) {
+              throw new Error("Proxy blocked");
+            }
+            data = JSON.parse(responseData.contents);
+          } else {
+            data = responseData.contents;
+          }
+        }
+        
+        console.log("KCex API response:", data);
 
-      // Check if the response is HTML (error page) - case insensitive
-      if (typeof proxyData.contents === 'string' && 
-          (proxyData.contents.toLowerCase().includes('<html') || proxyData.contents.includes('403 ERROR'))) {
-        throw new Error("API KCex bloqueou a requisição (403). O par pode não estar disponível ou a API está temporariamente indisponível.");
+        if (data.bids && data.asks) {
+          return this.transformKcexData(data, config.symbol);
+        }
+        
+        throw new Error("Invalid data structure");
+      } catch (error) {
+        console.error(`KCex proxy failed (${url}):`, error);
+        lastError = error as Error;
+        continue;
       }
-      
-      const data = JSON.parse(proxyData.contents);
-      console.log("KCex API response:", data);
-
-      if (!data.bids || !data.asks) {
-        throw new Error("Dados inválidos da API KCex - estrutura incorreta. O par pode não existir nesta corretora.");
-      }
-
-      return this.transformKcexData(data, config.symbol);
-    } catch (error) {
-      console.error("Error in fetchKcexOrderBook:", error);
-      if (error instanceof SyntaxError) {
-        throw new Error("API KCex bloqueou a requisição. Tente outro par ou aguarde alguns minutos.");
-      }
-      throw error;
     }
+    
+    throw new Error(`Erro ao conectar com KCex. O par ${config.symbol} pode não estar disponível.`);
   }
 
   private async fetchKrakenOrderBook(config: ApiConfig): Promise<OrderBook> {
