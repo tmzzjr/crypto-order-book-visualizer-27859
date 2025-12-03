@@ -188,7 +188,7 @@ const EXCHANGES = [
     requiresAuth: false,
     maxOrders: 1000,
     symbols: [
-      "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC"
+      "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC", "SHIBUSDT", "PEPEUSDT", "XRPUSDT"
     ]
   }
 ];

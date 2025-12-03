@@ -106,7 +106,7 @@ const EXCHANGES = [
     name: "KCex",
     value: "kcex",
     symbols: [
-      "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC"
+      "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC", "SHIBUSDT", "PEPEUSDT", "XRPUSDT"
     ]
   }
 ];

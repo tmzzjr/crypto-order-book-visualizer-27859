@@ -90,7 +90,7 @@ const EXCHANGE_SYMBOLS: { [key: string]: string[] } = {
     "WEN_USDT", "VINU_USDT", "BONK_USDT", "KISHU_USDT", "VOLTINU_USDT", "TURBO_USDT", "TURBO_USDC"
   ],
   kcex: [
-    "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC"
+    "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC", "SHIBUSDT", "PEPEUSDT", "XRPUSDT"
   ]
 };
 
