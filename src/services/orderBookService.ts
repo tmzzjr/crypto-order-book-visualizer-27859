@@ -139,8 +139,13 @@ class OrderBookService {
       console.log("KuCoin bids count:", data.data?.bids?.length || 0);
       console.log("KuCoin asks count:", data.data?.asks?.length || 0);
 
+      // Check for API error response
+      if (data.code && data.code !== "200000") {
+        throw new Error(`Erro KuCoin: ${data.msg || data.code}`);
+      }
+
       if (!data.data || !data.data.bids || !data.data.asks) {
-        throw new Error("Dados inválidos da API KuCoin - estrutura incorreta");
+        throw new Error(`Dados inválidos da API KuCoin: ${JSON.stringify(data).substring(0, 200)}`);
       }
 
       return this.transformKucoinData(data, config.symbol);
