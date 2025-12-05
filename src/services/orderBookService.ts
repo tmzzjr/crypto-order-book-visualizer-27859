@@ -112,8 +112,8 @@ class OrderBookService {
       symbol = "TURBO-USDC";
     }
     
-    // Usar level2_20, level2_100 ou level2_1000 - vamos usar level2_1000 para máximo de ordens
-    const originalUrl = `https://api.kucoin.com/api/v1/market/orderbook/level2_1000?symbol=${symbol}`;
+    // Usar level2_20 ou level2_100 (level2_1000 não existe)
+    const originalUrl = `https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`;
     const url = `${this.baseUrls.kucoin}${encodeURIComponent(originalUrl)}`;
     
     try {
