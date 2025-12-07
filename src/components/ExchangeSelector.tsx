@@ -108,6 +108,13 @@ const EXCHANGES = [
     symbols: [
       "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC", "SHIBUSDT", "PEPEUSDT", "XRPUSDT"
     ]
+  },
+  {
+    name: "NovaDAX",
+    value: "novadax",
+    symbols: [
+      "BTC_BRL", "BTC_USDT", "SHIB_BRL", "XRP_BRL", "PEPE_BRL", "XLM_BRL"
+    ]
   }
 ];
 
