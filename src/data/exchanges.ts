@@ -191,7 +191,7 @@ export const EXCHANGES: ExchangeConfig[] = [
     requiresAuth: false,
     maxOrders: 100,
     symbols: [
-      "BTC_BRL", "BTC_USDT", "SHIB_BRL", "XRP_BRL", "PEPE_BRL", "XLM_BRL"
+      "BTC_BRL", "BTC_USDT", "SHIB_BRL", "SHIB_USDT", "XRP_BRL", "PEPE_BRL", "XLM_BRL"
     ]
   }
 ];
