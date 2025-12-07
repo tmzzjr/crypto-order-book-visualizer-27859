@@ -17,7 +17,8 @@ class OrderBookService {
     bybit: "https://api.bybit.com/v5/market",
     coinex: "https://api.allorigins.win/get?url=",
     bingx: "https://api.allorigins.win/get?url=",
-    cryptocom: "https://api.allorigins.win/get?url="
+    cryptocom: "https://api.allorigins.win/get?url=",
+    novadax: "https://api.allorigins.win/get?url="
   };
 
   async fetchOrderBook(config: ApiConfig): Promise<OrderBook> {
@@ -55,6 +56,8 @@ class OrderBookService {
         return this.fetchBingxOrderBook(config);
       case "cryptocom":
         return this.fetchCryptocomOrderBook(config);
+      case "novadax":
+        return this.fetchNovadaxOrderBook(config);
       default:
         throw new Error(`Exchange ${config.exchange} não suportada`);
     }
@@ -1145,6 +1148,70 @@ class OrderBookService {
 
     const transformEntries = (entries: any[]): OrderBookEntry[] => {
       if (!Array.isArray(entries)) return [];
+      return entries.map((entry) => ({
+        price: entry[0].toString(),
+        quantity: entry[1].toString()
+      }));
+    };
+
+    return {
+      symbol,
+      bids: transformEntries(orderBookData.bids || []),
+      asks: transformEntries(orderBookData.asks || []),
+      timestamp: Date.now()
+    };
+  }
+
+  private async fetchNovadaxOrderBook(config: ApiConfig): Promise<OrderBook> {
+    const originalUrl = `https://api.novadax.com/v1/market/depth?symbol=${config.symbol}&limit=100`;
+    const url = `${this.baseUrls.novadax}${encodeURIComponent(originalUrl)}`;
+    
+    try {
+      console.log("Fetching from NovaDAX URL:", url);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("NovaDAX API Error:", errorText);
+        throw new Error(`Erro da API NovaDAX: ${response.status} - ${errorText}`);
+      }
+
+      const proxyData = await response.json();
+      
+      if (!proxyData.contents) {
+        throw new Error("Dados inválidos da API NovaDAX - resposta vazia");
+      }
+      
+      const data = JSON.parse(proxyData.contents);
+      console.log("NovaDAX API response:", data);
+
+      if (data.code !== "A10000") {
+        throw new Error(`Erro NovaDAX: ${data.message || data.code}`);
+      }
+
+      if (!data.data || !data.data.bids || !data.data.asks) {
+        throw new Error("Dados inválidos da API NovaDAX - estrutura incorreta");
+      }
+
+      return this.transformNovadaxData(data, config.symbol);
+    } catch (error) {
+      console.error("Error in fetchNovadaxOrderBook:", error);
+      if (error instanceof SyntaxError) {
+        throw new Error("Erro ao processar dados da NovaDAX - formato inválido");
+      }
+      throw error;
+    }
+  }
+
+  private transformNovadaxData(data: any, symbol: string): OrderBook {
+    const orderBookData = data.data;
+
+    const transformEntries = (entries: any[]): OrderBookEntry[] => {
+      if (!Array.isArray(entries)) {
+        console.error("NovaDAX entries is not an array:", entries);
+        return [];
+      }
       return entries.map((entry) => ({
         price: entry[0].toString(),
         quantity: entry[1].toString()

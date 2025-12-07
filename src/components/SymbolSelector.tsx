@@ -91,6 +91,9 @@ const EXCHANGE_SYMBOLS: { [key: string]: string[] } = {
   ],
   kcex: [
     "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC", "SHIBUSDT", "PEPEUSDT", "XRPUSDT"
+  ],
+  novadax: [
+    "BTC_BRL", "BTC_USDT", "SHIB_BRL", "XRP_BRL", "PEPE_BRL", "XLM_BRL"
   ]
 };
 
