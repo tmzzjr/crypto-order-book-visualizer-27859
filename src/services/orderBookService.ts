@@ -18,7 +18,9 @@ class OrderBookService {
     coinex: "https://api.allorigins.win/get?url=",
     bingx: "https://api.allorigins.win/get?url=",
     cryptocom: "https://api.allorigins.win/get?url=",
-    novadax: "https://api.allorigins.win/get?url="
+    novadax: "https://api.allorigins.win/get?url=",
+    xt: "https://api.allorigins.win/get?url=",
+    btcc: "https://api.allorigins.win/get?url="
   };
 
   async fetchOrderBook(config: ApiConfig): Promise<OrderBook> {
@@ -58,6 +60,10 @@ class OrderBookService {
         return this.fetchCryptocomOrderBook(config);
       case "novadax":
         return this.fetchNovadaxOrderBook(config);
+      case "xt":
+        return this.fetchXtOrderBook(config);
+      case "btcc":
+        return this.fetchBtccOrderBook(config);
       default:
         throw new Error(`Exchange ${config.exchange} não suportada`);
     }
@@ -1216,6 +1222,153 @@ class OrderBookService {
         price: entry[0].toString(),
         quantity: entry[1].toString()
       }));
+    };
+
+    return {
+      symbol,
+      bids: transformEntries(orderBookData.bids || []),
+      asks: transformEntries(orderBookData.asks || []),
+      timestamp: Date.now()
+    };
+  }
+
+  private async fetchXtOrderBook(config: ApiConfig): Promise<OrderBook> {
+    // XT uses lowercase symbols with underscore: shib_usdt
+    const symbol = config.symbol.toLowerCase().replace(/([a-z]+)(usdt|usdc)$/, '$1_$2');
+    const originalUrl = `https://sapi.xt.com/v4/public/depth?symbol=${symbol}&limit=200`;
+    const url = `${this.baseUrls.xt}${encodeURIComponent(originalUrl)}`;
+    
+    try {
+      console.log("Fetching from XT URL:", url);
+      console.log("Mapped symbol for XT:", symbol);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("XT API Error:", errorText);
+        throw new Error(`Erro da API XT: ${response.status} - ${errorText}`);
+      }
+
+      const proxyData = await response.json();
+      
+      if (!proxyData.contents) {
+        throw new Error("Dados inválidos da API XT - resposta vazia");
+      }
+      
+      const data = JSON.parse(proxyData.contents);
+      console.log("XT API response:", data);
+
+      if (data.rc !== 0) {
+        throw new Error(`Erro XT: ${data.mc || data.rc}`);
+      }
+
+      if (!data.result || !data.result.bids || !data.result.asks) {
+        throw new Error("Dados inválidos da API XT - estrutura incorreta");
+      }
+
+      return this.transformXtData(data, config.symbol);
+    } catch (error) {
+      console.error("Error in fetchXtOrderBook:", error);
+      if (error instanceof SyntaxError) {
+        throw new Error("Erro ao processar dados da XT - formato inválido");
+      }
+      throw error;
+    }
+  }
+
+  private transformXtData(data: any, symbol: string): OrderBook {
+    const orderBookData = data.result;
+
+    const transformEntries = (entries: any[]): OrderBookEntry[] => {
+      if (!Array.isArray(entries)) {
+        console.error("XT entries is not an array:", entries);
+        return [];
+      }
+      return entries.map((entry) => ({
+        price: entry[0].toString(),
+        quantity: entry[1].toString()
+      }));
+    };
+
+    return {
+      symbol,
+      bids: transformEntries(orderBookData.bids || []),
+      asks: transformEntries(orderBookData.asks || []),
+      timestamp: Date.now()
+    };
+  }
+
+  private async fetchBtccOrderBook(config: ApiConfig): Promise<OrderBook> {
+    // BTCC uses uppercase symbols: SHIBUSDT
+    const symbol = config.symbol.toUpperCase();
+    const originalUrl = `https://api.btcc.com/apiv1/getorderbooks?symbol=${symbol}&count=200`;
+    const url = `${this.baseUrls.btcc}${encodeURIComponent(originalUrl)}`;
+    
+    try {
+      console.log("Fetching from BTCC URL:", url);
+      
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("BTCC API Error:", errorText);
+        throw new Error(`Erro da API BTCC: ${response.status} - ${errorText}`);
+      }
+
+      const proxyData = await response.json();
+      
+      if (!proxyData.contents) {
+        throw new Error("Dados inválidos da API BTCC - resposta vazia");
+      }
+      
+      const data = JSON.parse(proxyData.contents);
+      console.log("BTCC API response:", data);
+
+      if (data.error) {
+        throw new Error(`Erro BTCC: ${data.error}`);
+      }
+
+      if (!data.bids && !data.asks && !data.data) {
+        throw new Error("Dados inválidos da API BTCC - estrutura incorreta");
+      }
+
+      return this.transformBtccData(data, config.symbol);
+    } catch (error) {
+      console.error("Error in fetchBtccOrderBook:", error);
+      if (error instanceof SyntaxError) {
+        throw new Error("Erro ao processar dados da BTCC - formato inválido");
+      }
+      throw error;
+    }
+  }
+
+  private transformBtccData(data: any, symbol: string): OrderBook {
+    // BTCC pode retornar em diferentes formatos
+    const orderBookData = data.data || data;
+
+    const transformEntries = (entries: any[]): OrderBookEntry[] => {
+      if (!Array.isArray(entries)) {
+        console.error("BTCC entries is not an array:", entries);
+        return [];
+      }
+      return entries.map((entry) => {
+        if (Array.isArray(entry) && entry.length >= 2) {
+          return {
+            price: entry[0].toString(),
+            quantity: entry[1].toString()
+          };
+        } else if (entry.price && entry.amount) {
+          return {
+            price: entry.price.toString(),
+            quantity: entry.amount.toString()
+          };
+        }
+        return {
+          price: "0",
+          quantity: "0"
+        };
+      });
     };
 
     return {
