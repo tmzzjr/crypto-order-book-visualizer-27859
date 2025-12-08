@@ -91,10 +91,10 @@ export const EXCHANGES: ExchangeConfig[] = [
     requiresAuth: false,
     maxOrders: 400,
     symbols: [
-      "BTC-USDT", "BTC-USDC", "SHIB-USDT", "SHIB-USDC", "SHIB-EUR", "LUNC-USDT", "LUNC-USDC", "LUNA-USDT", "LUNA-USDC",
-      "XLM-USDT", "XLM-USDC", "XRP-USDT", "XRP-USDC", "XRP-EUR", "VOLTINU-USDT", "KISHU-USDT",
+      "BTC-USDT", "BTC-USDC", "BTC-BRL", "SHIB-USDT", "SHIB-USDC", "SHIB-EUR", "LUNC-USDT", "LUNC-USDC", "LUNA-USDT", "LUNA-USDC",
+      "XLM-USDT", "XLM-USDC", "XRP-USDT", "XRP-USDC", "XRP-EUR", "XRP-BRL", "VOLTINU-USDT", "KISHU-USDT",
       "PEPE-USDT", "PEPE-USDC", "WEN-USDT", "VINU-USDT", "BONK-USDT", "TURBO-USDT", "TURBO-USDC",
-      "FLOKI-USD", "FLOKI-USDT", "USD1-USDT", "USD1-USD"
+      "FLOKI-USD", "FLOKI-USDT", "USD1-USDT", "USD1-USD", "ETH-BRL"
     ]
   },
   {
@@ -140,7 +140,8 @@ export const EXCHANGES: ExchangeConfig[] = [
     symbols: [
       "BTCUSDT", "BTCUSDC", "SHIBUSDT", "SHIBUSDC", "LUNCUSDT", "LUNCUSDC", "LUNAUSDT", "LUNAUSDC",
       "XLMUSDT", "XLMUSDC", "XRPUSDT", "XRPUSDC", "PEPEUSDT", "PEPEUSDC",
-      "WENUSDT", "VINUUSDT", "BONKUSDT", "KISHUUSDT", "VOLTINUUSDT", "TURBOUSDT", "TURBOUSDC"
+      "WENUSDT", "VINUUSDT", "BONKUSDT", "KISHUUSDT", "VOLTINUUSDT", "TURBOUSDT", "TURBOUSDC",
+      "SHIBEUR"
     ]
   },
   {
@@ -192,6 +193,24 @@ export const EXCHANGES: ExchangeConfig[] = [
     maxOrders: 100,
     symbols: [
       "BTC_BRL", "BTC_USDT", "SHIB_BRL", "SHIB_USDT", "XRP_BRL", "PEPE_BRL", "XLM_BRL"
+    ]
+  },
+  {
+    name: "XT",
+    value: "xt",
+    requiresAuth: false,
+    maxOrders: 200,
+    symbols: [
+      "SHIBUSDT", "SHIBUSDC", "PEPEUSDT", "PEPEUSDC"
+    ]
+  },
+  {
+    name: "BTCC",
+    value: "btcc",
+    requiresAuth: false,
+    maxOrders: 200,
+    symbols: [
+      "SHIBUSDT", "SHIBUSDC", "PEPEUSDT", "PEPEUSDC"
     ]
   }
 ];
