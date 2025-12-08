@@ -205,21 +205,12 @@ export const EXCHANGES: ExchangeConfig[] = [
     ]
   },
   {
-    name: "BTCC",
-    value: "btcc",
-    requiresAuth: false,
-    maxOrders: 200,
-    symbols: [
-      "SHIBUSDT", "SHIBUSDC", "PEPEUSDT", "PEPEUSDC"
-    ]
-  },
-  {
     name: "Deepcoin",
     value: "deepcoin",
     requiresAuth: false,
-    maxOrders: 200,
+    maxOrders: 400,
     symbols: [
-      "SHIBUSDT", "PEPEUSDT", "BTCUSDT"
+      "SHIB-USDT", "PEPE-USDT", "BTC-USDT"
     ]
   }
 ];

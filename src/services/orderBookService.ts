@@ -20,7 +20,6 @@ class OrderBookService {
     cryptocom: "https://api.allorigins.win/get?url=",
     novadax: "https://api.allorigins.win/get?url=",
     xt: "https://api.allorigins.win/get?url=",
-    btcc: "https://api.allorigins.win/get?url=",
     deepcoin: "https://api.allorigins.win/get?url="
   };
 
@@ -63,8 +62,6 @@ class OrderBookService {
         return this.fetchNovadaxOrderBook(config);
       case "xt":
         return this.fetchXtOrderBook(config);
-      case "btcc":
-        return this.fetchBtccOrderBook(config);
       case "deepcoin":
         return this.fetchDeepcoinOrderBook(config);
       default:
@@ -1302,106 +1299,15 @@ class OrderBookService {
     };
   }
 
-  private async fetchBtccOrderBook(config: ApiConfig): Promise<OrderBook> {
-    // BTCC usa formato similar a Binance
-    const symbol = config.symbol.toUpperCase();
-    
-    // Tentar múltiplos proxies
-    const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(`https://api.btcc.com/api/v1/depth?symbol=${symbol}&limit=200`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.btcc.com/api/v1/depth?symbol=${symbol}&limit=200`)}`,
-      `${this.baseUrls.btcc}${encodeURIComponent(`https://api.btcc.com/api/v1/depth?symbol=${symbol}&limit=200`)}`
-    ];
-    
-    let lastError: Error | null = null;
-    
-    for (const url of proxies) {
-      try {
-        console.log("Fetching from BTCC URL:", url);
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const responseData = await response.json();
-        
-        let data = responseData;
-        if (responseData.contents) {
-          if (typeof responseData.contents === 'string') {
-            if (responseData.contents.toLowerCase().includes('<html') || responseData.contents.includes('403')) {
-              throw new Error("Proxy blocked");
-            }
-            data = JSON.parse(responseData.contents);
-          } else {
-            data = responseData.contents;
-          }
-        }
-        
-        console.log("BTCC API response:", data);
-
-        // Verificar diferentes formatos de resposta
-        if (data.bids && data.asks) {
-          return this.transformBtccData(data, config.symbol);
-        } else if (data.data && data.data.bids && data.data.asks) {
-          return this.transformBtccData(data.data, config.symbol);
-        }
-        
-        throw new Error("Invalid data structure");
-      } catch (error) {
-        console.error(`BTCC proxy failed (${url}):`, error);
-        lastError = error as Error;
-        continue;
-      }
-    }
-    
-    throw new Error(`Erro BTCC: ${lastError?.message || 'Não foi possível conectar'}`);
-  }
-
-  private transformBtccData(data: any, symbol: string): OrderBook {
-    const transformEntries = (entries: any[]): OrderBookEntry[] => {
-      if (!Array.isArray(entries)) {
-        console.error("BTCC entries is not an array:", entries);
-        return [];
-      }
-      return entries.map((entry) => {
-        if (Array.isArray(entry) && entry.length >= 2) {
-          return {
-            price: entry[0].toString(),
-            quantity: entry[1].toString()
-          };
-        } else if (entry.price !== undefined && (entry.amount !== undefined || entry.quantity !== undefined)) {
-          return {
-            price: entry.price.toString(),
-            quantity: (entry.amount || entry.quantity).toString()
-          };
-        }
-        return {
-          price: "0",
-          quantity: "0"
-        };
-      });
-    };
-
-    return {
-      symbol,
-      bids: transformEntries(data.bids || []),
-      asks: transformEntries(data.asks || []),
-      timestamp: Date.now()
-    };
-  }
 
   private async fetchDeepcoinOrderBook(config: ApiConfig): Promise<OrderBook> {
-    // Deepcoin usa formato underscore: SHIB_USDT
-    const symbol = config.symbol.includes('_') 
-      ? config.symbol 
-      : config.symbol.replace(/([A-Z]+)(USDT|USDC)$/, '$1_$2');
+    // Deepcoin usa instId no formato BTC-USDT
+    const instId = config.symbol;
     
     const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(`https://api.deepcoin.com/deepcoin/market/orderbook?symbol=${symbol}&limit=200`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.deepcoin.com/deepcoin/market/orderbook?symbol=${symbol}&limit=200`)}`,
-      `${this.baseUrls.deepcoin}${encodeURIComponent(`https://api.deepcoin.com/deepcoin/market/orderbook?symbol=${symbol}&limit=200`)}`
+      `https://corsproxy.io/?${encodeURIComponent(`https://api.deepcoin.com/deepcoin/market/books?instId=${instId}&sz=400`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.deepcoin.com/deepcoin/market/books?instId=${instId}&sz=400`)}`,
+      `${this.baseUrls.deepcoin}${encodeURIComponent(`https://api.deepcoin.com/deepcoin/market/books?instId=${instId}&sz=400`)}`
     ];
     
     let lastError: Error | null = null;
@@ -1421,8 +1327,10 @@ class OrderBookService {
         let data = responseData;
         if (responseData.contents) {
           if (typeof responseData.contents === 'string') {
-            if (responseData.contents.toLowerCase().includes('<html') || responseData.contents.includes('403')) {
-              throw new Error("Proxy blocked");
+            if (responseData.contents.toLowerCase().includes('<html') || 
+                responseData.contents.includes('403') ||
+                responseData.contents === 'Not Found') {
+              throw new Error("Proxy blocked or not found");
             }
             data = JSON.parse(responseData.contents);
           } else {
@@ -1432,16 +1340,16 @@ class OrderBookService {
         
         console.log("Deepcoin API response:", data);
 
-        // Verificar diferentes formatos de resposta
-        if (data.bids && data.asks) {
+        // Verificar código de resposta
+        if (data.code === "0" && data.data) {
+          return this.transformDeepcoinData(data.data, config.symbol);
+        } else if (data.bids && data.asks) {
           return this.transformDeepcoinData(data, config.symbol);
         } else if (data.data && data.data.bids && data.data.asks) {
           return this.transformDeepcoinData(data.data, config.symbol);
-        } else if (data.result && data.result.bids && data.result.asks) {
-          return this.transformDeepcoinData(data.result, config.symbol);
         }
         
-        throw new Error("Invalid data structure");
+        throw new Error(data.msg || "Invalid data structure");
       } catch (error) {
         console.error(`Deepcoin proxy failed (${url}):`, error);
         lastError = error as Error;
