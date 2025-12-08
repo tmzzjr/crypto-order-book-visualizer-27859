@@ -212,6 +212,15 @@ export const EXCHANGES: ExchangeConfig[] = [
     symbols: [
       "SHIBUSDT", "SHIBUSDC", "PEPEUSDT", "PEPEUSDC"
     ]
+  },
+  {
+    name: "Deepcoin",
+    value: "deepcoin",
+    requiresAuth: false,
+    maxOrders: 200,
+    symbols: [
+      "SHIBUSDT", "PEPEUSDT", "BTCUSDT"
+    ]
   }
 ];
 
