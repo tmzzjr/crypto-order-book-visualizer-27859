@@ -183,7 +183,7 @@ export const EXCHANGES: ExchangeConfig[] = [
     requiresAuth: false,
     maxOrders: 1000,
     symbols: [
-      "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC", "SHIBUSDT", "PEPEUSDT", "XRPUSDT"
+      "BTCUSDT", "BTCUSDC", "USD1USDT", "USD1USDC", "PEPEUSDT", "XRPUSDT"
     ]
   },
   {
@@ -201,7 +201,7 @@ export const EXCHANGES: ExchangeConfig[] = [
     requiresAuth: false,
     maxOrders: 200,
     symbols: [
-      "SHIBUSDT", "SHIBUSDC", "PEPEUSDT", "PEPEUSDC"
+      "SHIBUSDT", "SHIBUSDC", "PEPEUSDT", "PEPEUSDC", "XRPUSDT", "XRPUSDC"
     ]
   },
   {
