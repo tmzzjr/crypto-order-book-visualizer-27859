@@ -487,22 +487,30 @@ class OrderBookService {
     const gateioSymbolMap: { [key: string]: string } = {
       'LUNC-USDT': 'LUNC_USDT',
       'LUNC-USDC': 'LUNC_USDT', // Gate.io usa USDT para LUNC, não USDC
+      'LUNC_USDC': 'LUNC_USDT', // Gate.io não tem LUNC/USDC
       'LUNA-USDT': 'LUNA_USDT',
       'LUNA-USDC': 'LUNA_USDT', // Gate.io usa USDT para LUNA, não USDC
+      'LUNA_USDC': 'LUNA_USDT', // Gate.io não tem LUNA/USDC
       'BTC-USDT': 'BTC_USDT',
       'BTC-USDC': 'BTC_USDT',
       'SHIB-USDT': 'SHIB_USDT',
       'SHIB-USDC': 'SHIB_USDT',
+      'SHIB_USDC': 'SHIB_USDT', // Gate.io não tem SHIB/USDC
       'XRP-USDT': 'XRP_USDT',
       'XRP-USDC': 'XRP_USDT',
+      'XRP_USDC': 'XRP_USDT', // Gate.io não tem XRP/USDC
       'XLM-USDT': 'XLM_USDT',
       'XLM-USDC': 'XLM_USDT',
+      'XLM_USDC': 'XLM_USDT', // Gate.io não tem XLM/USDC
       'PEPE-USDT': 'PEPE_USDT',
       'PEPE-USDC': 'PEPE_USDT',
+      'PEPE_USDC': 'PEPE_USDT', // Gate.io não tem PEPE/USDC
       'TURBO-USDT': 'TURBO_USDT',
       'TURBO-USDC': 'TURBO_USDT',
+      'TURBO_USDC': 'TURBO_USDT', // Gate.io não tem TURBO/USDC
       'USD1-USDT': 'USD1_USDT',
-      'USD1-USDC': 'USD1_USDT'
+      'USD1-USDC': 'USD1_USDT',
+      'USD1_USDC': 'USD1_USDT' // Gate.io não tem USD1/USDC
     };
     
     const gateioSymbol = gateioSymbolMap[config.symbol] || config.symbol;
