@@ -20,7 +20,8 @@ class OrderBookService {
     cryptocom: "https://api.allorigins.win/get?url=",
     novadax: "https://api.allorigins.win/get?url=",
     xt: "https://api.allorigins.win/get?url=",
-    deepcoin: "https://api.allorigins.win/get?url="
+    deepcoin: "https://api.allorigins.win/get?url=",
+    btcc: "https://api.allorigins.win/get?url="
   };
 
   async fetchOrderBook(config: ApiConfig): Promise<OrderBook> {
@@ -64,6 +65,8 @@ class OrderBookService {
         return this.fetchXtOrderBook(config);
       case "deepcoin":
         return this.fetchDeepcoinOrderBook(config);
+      case "btcc":
+        return this.fetchBtccOrderBook(config);
       default:
         throw new Error(`Exchange ${config.exchange} não suportada`);
     }
@@ -1372,6 +1375,105 @@ class OrderBookService {
     const transformEntries = (entries: any[]): OrderBookEntry[] => {
       if (!Array.isArray(entries)) {
         console.error("Deepcoin entries is not an array:", entries);
+        return [];
+      }
+      return entries.map((entry) => {
+        if (Array.isArray(entry) && entry.length >= 2) {
+          return {
+            price: entry[0].toString(),
+            quantity: entry[1].toString()
+          };
+        } else if (entry.price !== undefined && (entry.amount !== undefined || entry.quantity !== undefined || entry.size !== undefined)) {
+          return {
+            price: entry.price.toString(),
+            quantity: (entry.amount || entry.quantity || entry.size).toString()
+          };
+        }
+        return {
+          price: "0",
+          quantity: "0"
+        };
+      });
+    };
+
+    return {
+      symbol,
+      bids: transformEntries(data.bids || []),
+      asks: transformEntries(data.asks || []),
+      timestamp: Date.now()
+    };
+  }
+
+  private async fetchBtccOrderBook(config: ApiConfig): Promise<OrderBook> {
+    // BTCC usa o formato BTCUSDT para símbolos spot
+    const symbol = config.symbol.replace('-', '');
+    
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`,
+      `${this.baseUrls.btcc}${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`
+    ];
+    
+    let lastError: Error | null = null;
+    
+    for (const url of proxies) {
+      try {
+        console.log("Fetching from BTCC URL:", url);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const responseData = await response.json();
+        
+        let data = responseData;
+        if (responseData.contents) {
+          if (typeof responseData.contents === 'string') {
+            if (responseData.contents.toLowerCase().includes('<html') || 
+                responseData.contents.includes('403') ||
+                responseData.contents === 'Not Found') {
+              throw new Error("Proxy blocked or not found");
+            }
+            data = JSON.parse(responseData.contents);
+          } else {
+            data = responseData.contents;
+          }
+        }
+        
+        console.log("BTCC API response:", data);
+
+        // Verificar diferentes formatos de resposta
+        if (data.code === 0 || data.code === "0") {
+          if (data.data && (data.data.bids || data.data.asks)) {
+            return this.transformBtccData(data.data, config.symbol);
+          }
+        }
+        
+        if (data.bids && data.asks) {
+          return this.transformBtccData(data, config.symbol);
+        }
+        
+        if (data.result && (data.result.bids || data.result.asks)) {
+          return this.transformBtccData(data.result, config.symbol);
+        }
+        
+        throw new Error(data.msg || data.message || "Invalid data structure");
+      } catch (error) {
+        console.error(`BTCC proxy failed (${url}):`, error);
+        lastError = error as Error;
+        continue;
+      }
+    }
+    
+    throw new Error(`Erro BTCC: ${lastError?.message || 'Não foi possível conectar'}`);
+  }
+
+  private transformBtccData(data: any, symbol: string): OrderBook {
+    const transformEntries = (entries: any[]): OrderBookEntry[] => {
+      if (!Array.isArray(entries)) {
+        console.error("BTCC entries is not an array:", entries);
         return [];
       }
       return entries.map((entry) => {
