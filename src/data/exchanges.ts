@@ -212,6 +212,16 @@ export const EXCHANGES: ExchangeConfig[] = [
     symbols: [
       "SHIB-USDT", "PEPE-USDT", "BTC-USDT"
     ]
+  },
+  {
+    name: "BTCC",
+    value: "btcc",
+    requiresAuth: false,
+    maxOrders: 200,
+    symbols: [
+      "BTCUSDT", "ETHUSDT", "XRPUSDT", "LTCUSDT", "EOSUSDT", "TRXUSDT", "LINKUSDT",
+      "ADAUSDT", "DOGEUSDT", "SHIBUSDT", "PEPEUSDT", "SOLUSDT", "BNBUSDT", "MATICUSDT"
+    ]
   }
 ];
 
