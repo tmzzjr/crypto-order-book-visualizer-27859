@@ -47,7 +47,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <header className="text-center mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -55,7 +55,7 @@ const Index = () => {
               <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-lg">OB</span>
               </div>
-              <h1 className="text-4xl font-bold text-white">
+              <h1 className="text-4xl font-bold text-foreground">
                 Crypto Order Book
               </h1>
             </div>
@@ -63,13 +63,13 @@ const Index = () => {
               <Button
                 onClick={handleSignOut}
                 variant="outline"
-                className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600"
+                className="bg-card hover:bg-muted text-foreground border-border"
               >
                 Sair
               </Button>
             )}
           </div>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
             Visualize order books completos de corretoras de crypto em tempo real com dados precisos e interface profissional
           </p>
         </header>
@@ -82,14 +82,14 @@ const Index = () => {
           <div>
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-3 h-3 bg-pink-500 rounded-full animate-pulse"></div>
-                <span className="text-white font-medium">
+                <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+                <span className="text-foreground font-medium">
                   Conectado: {apiConfig?.exchange} - {apiConfig?.symbol}
                 </span>
               </div>
               <button
                 onClick={handleReconfigure}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                className="px-4 py-2 bg-card hover:bg-muted text-foreground rounded-lg transition-colors border border-border"
               >
                 Reconfigurar
               </button>
