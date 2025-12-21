@@ -91,12 +91,13 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
   };
 
   // Format price with subscript notation for small decimals: 0.{4}1234
+  // For prices >= 1, show only 2 decimal places (like $2.35)
   const formatPriceCompact = (price: string) => {
     const num = parseFloat(price);
     if (num >= 1) {
-      return num.toFixed(8);
+      return num.toFixed(2);
     } else if (num >= 0.001) {
-      return num.toFixed(8);
+      return num.toFixed(4);
     } else {
       const str = num.toFixed(18);
       const match = str.match(/^0\.(0+)(\d{1,4})/);
