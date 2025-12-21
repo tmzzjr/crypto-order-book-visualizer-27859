@@ -188,7 +188,7 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                 <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
                   <span className="text-slate-400">TOTAL:</span>
                   <span className="text-red-400">
-                    {formatQuantity(orderBook.asks.reduce((sum, ask) => sum + parseFloat(ask.quantity), 0).toString())}
+                    {orderBook.asks.reduce((sum, ask) => sum + parseFloat(ask.quantity), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
                   </span>
                   <span className="text-red-400">
                     ${orderBook.asks.reduce((sum, ask) => sum + (parseFloat(ask.price) * parseFloat(ask.quantity)), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -239,7 +239,7 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                 <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
                   <span className="text-slate-400">TOTAL:</span>
                   <span className="text-green-400">
-                    {formatQuantity(orderBook.bids.reduce((sum, bid) => sum + parseFloat(bid.quantity), 0).toString())}
+                    {orderBook.bids.reduce((sum, bid) => sum + parseFloat(bid.quantity), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
                   </span>
                   <span className="text-green-400">
                     ${orderBook.bids.reduce((sum, bid) => sum + (parseFloat(bid.price) * parseFloat(bid.quantity)), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
