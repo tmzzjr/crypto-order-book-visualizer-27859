@@ -124,50 +124,66 @@ class OrderBookService {
       symbol = "TURBO-USDC";
     }
     
-    // Usar level2_100 - máximo sem autenticação (v3 requer API key)
-    const originalUrl = `https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`;
-    const url = `${this.baseUrls.kucoin}${encodeURIComponent(originalUrl)}`;
+    // Tentar v3 API primeiro (full depth), depois fallback para level2_100
+    const proxies = [
+      `https://corsproxy.io/?${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
+      `${this.baseUrls.kucoin}${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
+      // Fallback para level2_100
+      `${this.baseUrls.kucoin}${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`
+    ];
     
-    try {
-      console.log("Fetching from KuCoin URL:", url);
-      console.log("Mapped symbol:", symbol);
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("KuCoin API Error:", errorText);
-        throw new Error(`Erro da API KuCoin: ${response.status} - ${errorText}`);
-      }
+    let lastError: Error | null = null;
+    
+    for (const url of proxies) {
+      try {
+        console.log("Fetching from KuCoin URL:", url);
+        console.log("Mapped symbol:", symbol);
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
 
-      const proxyData = await response.json();
-      
-      if (!proxyData.contents) {
-        throw new Error("Dados inválidos da API KuCoin - resposta vazia");
-      }
-      
-      const data = JSON.parse(proxyData.contents);
-      console.log("KuCoin API response:", data);
-      console.log("KuCoin bids count:", data.data?.bids?.length || 0);
-      console.log("KuCoin asks count:", data.data?.asks?.length || 0);
+        const responseData = await response.json();
+        
+        let data = responseData;
+        if (responseData.contents) {
+          if (typeof responseData.contents === 'string') {
+            if (responseData.contents.toLowerCase().includes('<html') || 
+                responseData.contents.includes('403') ||
+                responseData.contents === 'Not Found') {
+              throw new Error("Proxy blocked or not found");
+            }
+            data = JSON.parse(responseData.contents);
+          } else {
+            data = responseData.contents;
+          }
+        }
+        
+        console.log("KuCoin API response:", data);
+        console.log("KuCoin bids count:", data.data?.bids?.length || 0);
+        console.log("KuCoin asks count:", data.data?.asks?.length || 0);
 
-      // Check for API error response
-      if (data.code && data.code !== "200000") {
-        throw new Error(`Erro KuCoin: ${data.msg || data.code}`);
-      }
+        // Check for API error response
+        if (data.code && data.code !== "200000") {
+          throw new Error(`Erro KuCoin: ${data.msg || data.code}`);
+        }
 
-      if (!data.data || !data.data.bids || !data.data.asks) {
-        throw new Error(`Dados inválidos da API KuCoin: ${JSON.stringify(data).substring(0, 200)}`);
-      }
+        if (!data.data || !data.data.bids || !data.data.asks) {
+          throw new Error(`Dados inválidos da API KuCoin`);
+        }
 
-      return this.transformKucoinData(data, config.symbol);
-    } catch (error) {
-      console.error("Error in fetchKucoinOrderBook:", error);
-      if (error instanceof SyntaxError) {
-        throw new Error("Erro ao processar dados da KuCoin - formato inválido");
+        return this.transformKucoinData(data, config.symbol);
+      } catch (error) {
+        console.error(`KuCoin proxy failed (${url}):`, error);
+        lastError = error as Error;
+        continue;
       }
-      throw error;
     }
+    
+    throw new Error(`Erro KuCoin: ${lastError?.message || 'Não foi possível conectar'}`);
   }
 
   private async fetchKcexOrderBook(config: ApiConfig): Promise<OrderBook> {
