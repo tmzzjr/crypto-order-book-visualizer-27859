@@ -35,7 +35,7 @@ export const EXCHANGES: ExchangeConfig[] = [
     name: "KuCoin",
     value: "kucoin",
     requiresAuth: false,
-    maxOrders: 1000,
+    maxOrders: 200,
     symbols: [
       "BTC-USDT", "BTC-USDC", "BTC-USD1", "ETH-USD1", "SHIB-USDT", "SHIB-USDC", "LUNC-USDT", "LUNC-USDC", "LUNA-USDT", "LUNA-USDC",
       "XRP-USDT", "XRP-USDC", "XLM-USDT", "XLM-USDC", "PEPE-USDT", "PEPE-USDC",
