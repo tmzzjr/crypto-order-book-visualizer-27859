@@ -184,17 +184,31 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                 </div>
               </ScrollArea>
               {/* Totais Asks */}
-              <div className="border-t border-border pt-3 mt-3">
-                <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
-                  <span className="text-muted-foreground">TOTAL:</span>
-                  <span className="text-sell">
-                    {orderBook.asks.reduce((sum, ask) => sum + parseFloat(ask.quantity), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
-                  </span>
-                  <span className="text-sell">
-                    ${orderBook.asks.reduce((sum, ask) => sum + (parseFloat(ask.price) * parseFloat(ask.quantity)), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
+              {(() => {
+                const totalQty = orderBook.asks.reduce((sum, ask) => sum + parseFloat(ask.quantity), 0);
+                const totalValue = orderBook.asks.reduce((sum, ask) => sum + (parseFloat(ask.price) * parseFloat(ask.quantity)), 0);
+                const avgPrice = totalQty > 0 ? totalValue / totalQty : 0;
+                return (
+                  <div className="border-t border-border pt-3 mt-3 space-y-2">
+                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
+                      <span className="text-muted-foreground">TOTAL:</span>
+                      <span className="text-sell">
+                        {totalQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
+                      </span>
+                      <span className="text-sell">
+                        ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
+                      <span className="text-muted-foreground">PM:</span>
+                      <span className="text-sell font-mono">
+                        {formatPrice(avgPrice.toString())}
+                      </span>
+                      <span className="text-muted-foreground text-xs">(preço médio)</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
@@ -235,17 +249,31 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                 </div>
               </ScrollArea>
               {/* Totais Bids */}
-              <div className="border-t border-border pt-3 mt-3">
-                <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
-                  <span className="text-muted-foreground">TOTAL:</span>
-                  <span className="text-green-400">
-                    {orderBook.bids.reduce((sum, bid) => sum + parseFloat(bid.quantity), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
-                  </span>
-                  <span className="text-green-400">
-                    ${orderBook.bids.reduce((sum, bid) => sum + (parseFloat(bid.price) * parseFloat(bid.quantity)), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </div>
-              </div>
+              {(() => {
+                const totalQty = orderBook.bids.reduce((sum, bid) => sum + parseFloat(bid.quantity), 0);
+                const totalValue = orderBook.bids.reduce((sum, bid) => sum + (parseFloat(bid.price) * parseFloat(bid.quantity)), 0);
+                const avgPrice = totalQty > 0 ? totalValue / totalQty : 0;
+                return (
+                  <div className="border-t border-border pt-3 mt-3 space-y-2">
+                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
+                      <span className="text-muted-foreground">TOTAL:</span>
+                      <span className="text-green-400">
+                        {totalQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
+                      </span>
+                      <span className="text-green-400">
+                        ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
+                      <span className="text-muted-foreground">PM:</span>
+                      <span className="text-green-400 font-mono">
+                        {formatPrice(avgPrice.toString())}
+                      </span>
+                      <span className="text-muted-foreground text-xs">(preço médio)</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>

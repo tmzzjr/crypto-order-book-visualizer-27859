@@ -124,13 +124,12 @@ class OrderBookService {
       symbol = "TURBO-USDC";
     }
     
-    // Tentar v3 API primeiro (full depth), depois fallback para level2_100
+    // Tentar diferentes proxies e APIs
     const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
-      `${this.baseUrls.kucoin}${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
-      // Fallback para level2_100
-      `${this.baseUrls.kucoin}${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`,
+      `https://corsproxy.io/?${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`,
+      `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`
     ];
     
     let lastError: Error | null = null;
