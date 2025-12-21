@@ -8,6 +8,14 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      "/kucoin": {
+        target: "https://api.kucoin.com",
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/kucoin/, "")
+      }
+    }
   },
   plugins: [
     react(),

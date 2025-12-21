@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import LoginForm from "@/components/LoginForm";
@@ -12,17 +12,38 @@ const Index = () => {
   const [apiConfig, setApiConfig] = useState<ApiConfig | null>(null);
   const [isConfigured, setIsConfigured] = useState(false);
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("orderBookApiConfig");
+      if (stored) {
+        const parsed: ApiConfig = JSON.parse(stored);
+        setApiConfig(parsed);
+        setIsConfigured(!!parsed.exchange && !!parsed.symbol);
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
   const handleApiConfigSave = (config: ApiConfig) => {
     setApiConfig(config);
     setIsConfigured(true);
-    console.log("API Configuration saved:", config);
+    try {
+      localStorage.setItem("orderBookApiConfig", JSON.stringify(config));
+    } catch {
+      // ignore storage errors
+    }
   };
 
   const handleSymbolChange = (newSymbol: string) => {
     if (apiConfig) {
       const updatedConfig = { ...apiConfig, symbol: newSymbol };
       setApiConfig(updatedConfig);
-      console.log("Symbol changed to:", newSymbol);
+      try {
+        localStorage.setItem("orderBookApiConfig", JSON.stringify(updatedConfig));
+      } catch {
+        // ignore
+      }
     }
   };
 
@@ -31,19 +52,21 @@ const Index = () => {
       // Reset to first available symbol when changing exchange
       const updatedConfig = { ...apiConfig, exchange: newExchange, symbol: "" };
       setApiConfig(updatedConfig);
-      console.log("Exchange changed to:", newExchange);
+      try {
+        localStorage.setItem("orderBookApiConfig", JSON.stringify(updatedConfig));
+      } catch {
+        // ignore
+      }
     }
   };
 
   const handleReconfigure = () => {
     setIsConfigured(false);
-    setApiConfig(null);
   };
 
   const handleSignOut = async () => {
     await signOut();
     setIsConfigured(false);
-    setApiConfig(null);
   };
 
   return (
@@ -76,7 +99,7 @@ const Index = () => {
 
         {!isConfigured ? (
           <div className="max-w-2xl mx-auto">
-            <ApiConfiguration onSave={handleApiConfigSave} />
+            <ApiConfiguration onSave={handleApiConfigSave} initialConfig={apiConfig ?? undefined} />
           </div>
         ) : (
           <div>

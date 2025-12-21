@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import BalanceDisplay from "./BalanceDisplay";
 import SymbolSelector from "./SymbolSelector";
 import CoinPrices from "./CoinPrices";
@@ -19,6 +19,34 @@ interface OrderBookDisplayProps {
 
 const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: OrderBookDisplayProps) => {
   const { orderBook, loading, error, lastUpdate } = useOrderBook(apiConfig);
+  const [selectedAskIndex, setSelectedAskIndex] = useState<number | null>(null);
+  const [selectedBidIndex, setSelectedBidIndex] = useState<number | null>(null);
+
+  const baseAsset = useMemo(() => {
+    const s = orderBook?.symbol || apiConfig?.symbol || "";
+    if (!s) return "";
+    if (s.includes("-")) return s.split("-")[0];
+    if (s.includes("_")) return s.split("_")[0];
+    return s.replace(/(USDT|USDC|USD1|USD)$/i, "");
+  }, [orderBook, apiConfig]);
+
+  const cumulativeAsk = useMemo(() => {
+    if (!orderBook || selectedAskIndex === null) return null;
+    const slice = orderBook.asks.slice(0, selectedAskIndex + 1);
+    const qty = slice.reduce((acc, a) => acc + parseFloat(a.quantity), 0);
+    const usd = slice.reduce((acc, a) => acc + parseFloat(a.price) * parseFloat(a.quantity), 0);
+    const pm = qty > 0 ? usd / qty : 0;
+    return { usd, qty, pm };
+  }, [orderBook, selectedAskIndex]);
+
+  const cumulativeBid = useMemo(() => {
+    if (!orderBook || selectedBidIndex === null) return null;
+    const slice = orderBook.bids.slice(0, selectedBidIndex + 1);
+    const qty = slice.reduce((acc, b) => acc + parseFloat(b.quantity), 0);
+    const usd = slice.reduce((acc, b) => acc + parseFloat(b.price) * parseFloat(b.quantity), 0);
+    const pm = qty > 0 ? usd / qty : 0;
+    return { usd, qty, pm };
+  }, [orderBook, selectedBidIndex]);
 
   if (loading) {
     return (
@@ -193,11 +221,19 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                     return (
                       <div
                         key={index}
-                        className="grid grid-cols-3 gap-4 text-sm py-1 hover:bg-muted/50 transition-colors font-mono"
+                        className="grid grid-cols-3 gap-4 text-sm py-1 hover:bg-muted/50 transition-colors font-mono relative cursor-pointer"
+                        onClick={() => setSelectedAskIndex(prev => (prev === index ? null : index))}
                       >
                         <span className="text-sell">{formatPrice(ask.price)}</span>
                         <span className="text-foreground/80">{formatQuantity(ask.quantity)}</span>
                         <span className="text-muted-foreground">${total}</span>
+                        {selectedAskIndex === index && cumulativeAsk !== null && (
+                          <div className="absolute right-0 -top-6 text-xs px-2 py-1 bg-sell/20 border border-sell/50 rounded">
+                            Soma: ${cumulativeAsk.usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ·
+                            Qtd {baseAsset}: {cumulativeAsk.qty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} ·
+                            PM: {formatPriceCompact(cumulativeAsk.pm.toString())}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -254,11 +290,19 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                     return (
                       <div
                         key={index}
-                        className="grid grid-cols-3 gap-4 text-sm py-1 hover:bg-muted/50 transition-colors font-mono"
+                        className="grid grid-cols-3 gap-4 text-sm py-1 hover:bg-muted/50 transition-colors font-mono relative cursor-pointer"
+                        onClick={() => setSelectedBidIndex(prev => (prev === index ? null : index))}
                       >
                         <span className="text-green-400">{formatPrice(bid.price)}</span>
                         <span className="text-foreground/80">{formatQuantity(bid.quantity)}</span>
                         <span className="text-muted-foreground">${total}</span>
+                        {selectedBidIndex === index && cumulativeBid !== null && (
+                          <div className="absolute right-0 -top-6 text-xs px-2 py-1 bg-green-500/10 border border-green-500/40 rounded">
+                            Soma: ${cumulativeBid.usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ·
+                            Qtd {baseAsset}: {cumulativeBid.qty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} ·
+                            PM: {formatPriceCompact(cumulativeBid.pm.toString())}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
