@@ -124,14 +124,12 @@ class OrderBookService {
       symbol = "TURBO-USDC";
     }
     
-    // Usar v3 API para full depth order book com múltiplos proxies
+    // KuCoin API pública só suporta level2_20 e level2_100 (v3 requer auth)
+    // Usar level2_100 para máximo de ordens disponíveis sem autenticação
     const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
-      // Fallback para level2_100 se v3 falhar
       `https://corsproxy.io/?${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`
     ];
     
     let lastError: Error | null = null;

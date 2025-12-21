@@ -46,8 +46,8 @@ export const useOrderBook = (apiConfig: ApiConfig | null) => {
     // Primeira busca
     fetchOrderBook().finally(() => setLoading(false));
 
-    // Configurar atualização automática a cada 5 segundos
-    intervalRef.current = setInterval(fetchOrderBook, 5000);
+    // Configurar atualização automática a cada 2 segundos
+    intervalRef.current = setInterval(fetchOrderBook, 2000);
 
     return () => {
       if (intervalRef.current) {
