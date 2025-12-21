@@ -124,12 +124,12 @@ class OrderBookService {
       symbol = "TURBO-USDC";
     }
     
-    // Tentar diferentes proxies e APIs
+    // Usar v3 API para full depth order book
     const proxies = [
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`,
-      `https://corsproxy.io/?${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`,
-      `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(`https://api.kucoin.com/api/v1/market/orderbook/level2_100?symbol=${symbol}`)}`
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
+      `https://corsproxy.io/?${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`,
+      `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(`https://api.kucoin.com/api/v3/market/orderbook/level2?symbol=${symbol}`)}`
     ];
     
     let lastError: Error | null = null;

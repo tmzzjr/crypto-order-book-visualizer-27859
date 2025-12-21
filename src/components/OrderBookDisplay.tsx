@@ -90,6 +90,25 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
     }
   };
 
+  // Format price with subscript notation for small decimals: 0.{4}1234
+  const formatPriceCompact = (price: string) => {
+    const num = parseFloat(price);
+    if (num >= 1) {
+      return num.toFixed(8);
+    } else if (num >= 0.001) {
+      return num.toFixed(8);
+    } else {
+      const str = num.toFixed(18);
+      const match = str.match(/^0\.(0+)(\d{1,4})/);
+      if (match) {
+        const zeros = match[1].length;
+        const significantDigits = match[2];
+        return `0.{${zeros}}${significantDigits}`;
+      }
+      return num.toFixed(8);
+    }
+  };
+
   const formatQuantity = (quantity: string) => {
     const num = parseFloat(quantity);
     if (num >= 1000) {
@@ -189,8 +208,8 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                 const totalValue = orderBook.asks.reduce((sum, ask) => sum + (parseFloat(ask.price) * parseFloat(ask.quantity)), 0);
                 const avgPrice = totalQty > 0 ? totalValue / totalQty : 0;
                 return (
-                  <div className="border-t border-border pt-3 mt-3 space-y-2">
-                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
+                  <div className="border-t border-border pt-3 mt-3">
+                    <div className="grid grid-cols-4 gap-4 text-sm font-semibold">
                       <span className="text-muted-foreground">TOTAL:</span>
                       <span className="text-sell">
                         {totalQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
@@ -198,13 +217,9 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                       <span className="text-sell">
                         ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
-                      <span className="text-muted-foreground">PM:</span>
-                      <span className="text-sell font-mono">
-                        {formatPrice(avgPrice.toString())}
+                      <span className="text-foreground font-mono">
+                        PM: {formatPriceCompact(avgPrice.toString())}
                       </span>
-                      <span className="text-muted-foreground text-xs">(preço médio)</span>
                     </div>
                   </div>
                 );
@@ -254,8 +269,8 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                 const totalValue = orderBook.bids.reduce((sum, bid) => sum + (parseFloat(bid.price) * parseFloat(bid.quantity)), 0);
                 const avgPrice = totalQty > 0 ? totalValue / totalQty : 0;
                 return (
-                  <div className="border-t border-border pt-3 mt-3 space-y-2">
-                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
+                  <div className="border-t border-border pt-3 mt-3">
+                    <div className="grid grid-cols-4 gap-4 text-sm font-semibold">
                       <span className="text-muted-foreground">TOTAL:</span>
                       <span className="text-green-400">
                         {totalQty.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
@@ -263,13 +278,9 @@ const OrderBookDisplay = ({ apiConfig, onSymbolChange, onExchangeChange }: Order
                       <span className="text-green-400">
                         ${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm font-semibold">
-                      <span className="text-muted-foreground">PM:</span>
-                      <span className="text-green-400 font-mono">
-                        {formatPrice(avgPrice.toString())}
+                      <span className="text-foreground font-mono">
+                        PM: {formatPriceCompact(avgPrice.toString())}
                       </span>
-                      <span className="text-muted-foreground text-xs">(preço médio)</span>
                     </div>
                   </div>
                 );
