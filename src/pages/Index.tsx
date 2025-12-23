@@ -6,7 +6,6 @@ import LoginForm from "@/components/LoginForm";
 import ApiConfiguration from "@/components/ApiConfiguration";
 import OrderBookDisplay from "@/components/OrderBookDisplay";
 import { ApiConfig } from "@/types/orderbook";
-import AutoSellConfig from "@/components/AutoSellConfig";
 
 const Index = () => {
   const { user, signOut } = useAuth();
@@ -101,9 +100,6 @@ const Index = () => {
         {!isConfigured ? (
           <div className="max-w-2xl mx-auto">
             <ApiConfiguration onSave={handleApiConfigSave} initialConfig={apiConfig ?? undefined} />
-            <div className="mt-4">
-              <AutoSellConfig apiConfig={apiConfig} />
-            </div>
           </div>
         ) : (
           <div>
@@ -120,9 +116,6 @@ const Index = () => {
               >
                 Reconfigurar
               </button>
-            </div>
-            <div className="max-w-2xl mb-6">
-              <AutoSellConfig apiConfig={apiConfig} />
             </div>
             <OrderBookDisplay 
               apiConfig={apiConfig} 
