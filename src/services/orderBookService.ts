@@ -1,5 +1,4 @@
 import { ApiConfig, OrderBook, OrderBookEntry } from "@/types/orderbook";
-import sha256 from "js-sha256";
 
 class OrderBookService {
   private baseUrls = {
@@ -34,8 +33,6 @@ class OrderBookService {
         return this.fetchBinanceOrderBook(config);
       case "kucoin":
         return this.fetchKucoinOrderBook(config);
-      case "kucoin-auth":
-        return this.fetchKucoinOrderBookV3Auth(config);
       case "kcex":
         return this.fetchKcexOrderBook(config);
       case "kraken":
@@ -186,103 +183,6 @@ class OrderBookService {
     }
     
     throw new Error(`Erro KuCoin: ${lastError?.message || 'Não foi possível conectar'}`);
-  }
-
-  private async hmacSha256Base64(message: string, secret: string): Promise<string> {
-    const subtle = (globalThis as any)?.crypto?.subtle ?? null;
-    if (subtle) {
-      const enc = new TextEncoder();
-      const key = await subtle.importKey(
-        "raw",
-        enc.encode(secret),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"]
-      );
-      const signature = await subtle.sign("HMAC", key, enc.encode(message));
-      const bytes = new Uint8Array(signature);
-      let binary = "";
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      return btoa(binary);
-    }
-    const hex = (sha256 as any).hmac(secret, message) as string;
-    let binary = "";
-    for (let i = 0; i < hex.length; i += 2) {
-      binary += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
-    }
-    return btoa(binary);
-  }
-
-  private async fetchKucoinOrderBookV3Auth(config: ApiConfig): Promise<OrderBook> {
-    let symbol = config.symbol;
-    if (symbol === "LUNC-USDT") {
-      symbol = "LUNC-USDT";
-    } else if (symbol === "LUNC-USDC") {
-      symbol = "LUNC-USDC";
-    } else if (symbol === "LUNA-USDT") {
-      symbol = "LUNA-USDT";
-    } else if (symbol === "LUNA-USDC") {
-      symbol = "LUNA-USDC";
-    } else if (symbol === "VOLTINU-USDT") {
-      symbol = "VOLT-USDT";
-    } else if (symbol === "TURBO-USDT") {
-      symbol = "TURBO-USDT";
-    } else if (symbol === "TURBO-USDC") {
-      symbol = "TURBO-USDC";
-    }
-
-    if (!config.apiKey || !config.apiSecret || !config.apiPassphrase) {
-      throw new Error("KuCoin autenticado requer API Key, Secret e Passphrase");
-    }
-
-    const baseUrl = import.meta.env?.DEV ? "/kucoin" : "https://api.kucoin.com";
-    const path = "/api/v3/market/orderbook/level2";
-    const query = `?symbol=${encodeURIComponent(symbol)}`;
-    const url = `${baseUrl}${path}${query}`;
-
-    const timestamp = Date.now().toString();
-    const method = "GET";
-    const preSign = `${timestamp}${method}${path}${query}`;
-    const sign = await this.hmacSha256Base64(preSign, config.apiSecret);
-
-    const version = config.apiKeyVersion ?? 2;
-    const passphraseHeader =
-      version === 2
-        ? await this.hmacSha256Base64(config.apiPassphrase, config.apiSecret)
-        : config.apiPassphrase;
-
-    const headers: Record<string, string> = {
-      "KC-API-KEY": config.apiKey,
-      "KC-API-SIGN": sign,
-      "KC-API-TIMESTAMP": timestamp,
-      "KC-API-PASSPHRASE": passphraseHeader,
-      "KC-API-KEY-VERSION": String(version)
-    };
-
-    try {
-      const response = await fetch(url, { headers });
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Erro KuCoin v3: ${response.status} - ${errText}`);
-      }
-
-      const raw = await response.json();
-      if (raw.code && raw.code !== "200000") {
-        throw new Error(raw.msg || `Erro KuCoin: ${raw.code}`);
-      }
-      const payload = raw.data ?? raw;
-      if (!payload || !payload.bids || !payload.asks) {
-        throw new Error("Dados inválidos da API KuCoin v3");
-      }
-      return this.transformKucoinV3Data(payload, config.symbol);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(`Falha KuCoin v3: ${error.message}`);
-      }
-      throw error;
-    }
   }
 
   private async fetchKcexOrderBook(config: ApiConfig): Promise<OrderBook> {
@@ -957,22 +857,6 @@ class OrderBookService {
       symbol,
       bids: transformedBids,
       asks: transformedAsks,
-      timestamp: Date.now()
-    };
-  }
-
-  private transformKucoinV3Data(data: any, symbol: string): OrderBook {
-    const transformEntries = (entries: string[][]): OrderBookEntry[] => {
-      return entries.map(([price, quantity]) => ({
-        price,
-        quantity
-      }));
-    };
-
-    return {
-      symbol,
-      bids: transformEntries(data.bids || []),
-      asks: transformEntries(data.asks || []),
       timestamp: Date.now()
     };
   }

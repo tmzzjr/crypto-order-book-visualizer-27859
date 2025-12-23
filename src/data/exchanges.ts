@@ -43,17 +43,6 @@ export const EXCHANGES: ExchangeConfig[] = [
     ]
   },
   {
-    name: "KuCoin (Autenticado)",
-    value: "kucoin-auth",
-    requiresAuth: true,
-    maxOrders: 5000,
-    symbols: [
-      "BTC-USDT", "BTC-USDC", "BTC-USD1", "ETH-USD1", "SHIB-USDT", "SHIB-USDC", "LUNC-USDT", "LUNC-USDC", "LUNA-USDT", "LUNA-USDC",
-      "XRP-USDT", "XRP-USDC", "XLM-USDT", "XLM-USDC", "PEPE-USDT", "PEPE-USDC",
-      "VOLTINU-USDT", "KISHU-USDT", "WEN-USDT", "VINU-USDT", "BONK-USDT", "TURBO-USDT", "TURBO-USDC"
-    ]
-  },
-  {
     name: "Kraken",
     value: "kraken",
     requiresAuth: false,

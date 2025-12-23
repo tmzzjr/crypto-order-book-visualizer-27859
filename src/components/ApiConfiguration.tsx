@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,47 +11,14 @@ import { EXCHANGES } from "@/data/exchanges";
 
 interface ApiConfigurationProps {
   onSave: (config: ApiConfig) => void;
-  initialConfig?: ApiConfig;
 }
 
-const ApiConfiguration = ({ onSave, initialConfig }: ApiConfigurationProps) => {
+const ApiConfiguration = ({ onSave }: ApiConfigurationProps) => {
   const [config, setConfig] = useState<ApiConfig>({
     exchange: "",
     symbol: "",
     testnet: false
   });
-
-  useEffect(() => {
-    if (initialConfig) {
-      setConfig({
-        exchange: initialConfig.exchange || "",
-        symbol: initialConfig.symbol || "",
-        apiKey: initialConfig.apiKey,
-        apiSecret: initialConfig.apiSecret,
-        apiPassphrase: initialConfig.apiPassphrase,
-        apiKeyVersion: initialConfig.apiKeyVersion,
-        testnet: !!initialConfig.testnet
-      });
-    } else {
-      try {
-        const stored = localStorage.getItem("orderBookApiConfig");
-        if (stored) {
-          const parsed = JSON.parse(stored) as ApiConfig;
-          setConfig({
-            exchange: parsed.exchange || "",
-            symbol: parsed.symbol || "",
-            apiKey: parsed.apiKey,
-            apiSecret: parsed.apiSecret,
-            apiPassphrase: parsed.apiPassphrase,
-            apiKeyVersion: parsed.apiKeyVersion,
-            testnet: !!parsed.testnet
-          });
-        }
-      } catch {
-        // ignore
-      }
-    }
-  }, [initialConfig]);
 
   const selectedExchange = EXCHANGES.find(ex => ex.value === config.exchange);
 
@@ -65,12 +32,10 @@ const ApiConfiguration = ({ onSave, initialConfig }: ApiConfigurationProps) => {
       return;
     }
 
-    if (selectedExchange?.requiresAuth && (!config.apiKey || !config.apiSecret || (config.exchange === "kucoin-auth" && !config.apiPassphrase))) {
+    if (selectedExchange?.requiresAuth && (!config.apiKey || !config.apiSecret)) {
       toast({
         title: "Erro",
-        description: config.exchange === "kucoin-auth" 
-          ? "API Key, Secret e Passphrase são obrigatórios para KuCoin (Autenticado)." 
-          : "API Key e Secret são obrigatórios para esta corretora.",
+        description: "API Key e Secret são obrigatórios para esta corretora.",
         variant: "destructive"
       });
       return;
@@ -160,20 +125,6 @@ const ApiConfiguration = ({ onSave, initialConfig }: ApiConfigurationProps) => {
                 className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
               />
             </div>
-
-            {config.exchange === "kucoin-auth" && (
-              <div className="space-y-2">
-                <Label htmlFor="apiPassphrase" className="text-white">Passphrase</Label>
-                <Input
-                  id="apiPassphrase"
-                  type="password"
-                  placeholder="Sua Passphrase da KuCoin"
-                  value={config.apiPassphrase || ""}
-                  onChange={(e) => setConfig({...config, apiPassphrase: e.target.value})}
-                  className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
-                />
-              </div>
-            )}
           </>
         )}
 

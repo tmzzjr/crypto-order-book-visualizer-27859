@@ -4,8 +4,6 @@ export interface ApiConfig {
   symbol: string;
   apiKey?: string;
   apiSecret?: string;
-  apiPassphrase?: string;
-  apiKeyVersion?: number;
   testnet?: boolean;
 }
 
