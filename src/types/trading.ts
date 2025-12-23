@@ -24,3 +24,13 @@ export interface Balance {
   free: string;
   locked: string;
 }
+
+export interface AutoSellSettings {
+  enabled: boolean;
+  exchange: string;
+  symbol: string;
+  type: 'LIMIT' | 'MARKET';
+  targetPrice?: string;
+  quantityPercent?: number;
+  fixedQuantity?: string;
+}

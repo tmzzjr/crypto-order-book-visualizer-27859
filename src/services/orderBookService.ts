@@ -46,6 +46,8 @@ class OrderBookService {
         return this.fetchBitfinexOrderBook(config);
       case "mexc":
         return this.fetchMexcOrderBook(config);
+      case "mexc-auth":
+        return this.fetchMexcOrderBookAuth(config);
       case "bitget":
         return this.fetchBitgetOrderBook(config);
       case "okx":
@@ -213,6 +215,24 @@ class OrderBookService {
       binary += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
     }
     return btoa(binary);
+  }
+
+  private async hmacSha256Hex(message: string, secret: string): Promise<string> {
+    const subtle = (globalThis as any)?.crypto?.subtle ?? null;
+    if (subtle) {
+      const enc = new TextEncoder();
+      const key = await subtle.importKey(
+        "raw",
+        enc.encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+      const signature = await subtle.sign("HMAC", key, enc.encode(message));
+      const bytes = new Uint8Array(signature);
+      return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    return (sha256 as any).hmac(secret, message) as string;
   }
 
   private async fetchKucoinOrderBookV3Auth(config: ApiConfig): Promise<OrderBook> {
@@ -541,6 +561,75 @@ class OrderBookService {
       if (error instanceof SyntaxError) {
         throw new Error("Erro ao processar dados da MEXC - formato inválido");
       }
+      throw error;
+    }
+  }
+
+  private async fetchMexcOrderBookAuth(config: ApiConfig): Promise<OrderBook> {
+    // Mapear símbolos específicos para MEXC
+    const mexcSymbolMap: { [key: string]: string } = {
+      'VOLTINUUSDT': 'VOLTINUUSDT',
+      'VOLTINU-USDT': 'VOLTINUUSDT',
+      'VOLTINU_USDT': 'VOLTINUUSDT',
+      'SHIBUSDT': 'SHIBUSDT',
+      'LUNCUSDT': 'LUNCUSDT',
+      'LUNAUSDT': 'LUNAUSDT',
+      'TURBOUSDT': 'TURBOUSDT'
+    };
+    
+    const symbol = mexcSymbolMap[config.symbol] || config.symbol;
+
+    if (!config.apiKey || !config.apiSecret) {
+      throw new Error("MEXC autenticado requer API Key e Secret");
+    }
+
+    const baseUrl = import.meta.env?.DEV ? "/mexc" : "https://api.mexc.com";
+    const path = "/api/v3/depth";
+    const timestamp = Date.now().toString();
+    
+    // MEXC requer parâmetros na query string para assinatura
+    // Aumentando limite para 2000 conforme solicitado
+    const queryParams = `symbol=${symbol}&limit=2000&timestamp=${timestamp}`;
+    const signature = await this.hmacSha256Hex(queryParams, config.apiSecret);
+    const url = `${baseUrl}${path}?${queryParams}&signature=${signature}`;
+
+    const headers: Record<string, string> = {
+      "X-MEXC-APIKEY": config.apiKey,
+      "Content-Type": "application/json"
+    };
+
+    try {
+      console.log("Fetching from MEXC Auth URL:", url);
+      
+      const response = await fetch(url, { headers });
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Erro MEXC Auth: ${response.status} - ${errText}`);
+      }
+
+      const data = await response.json();
+      console.log("MEXC Auth API response:", data);
+
+      if (data.code && data.code !== 200) {
+         throw new Error(data.msg || `Erro MEXC: ${data.code}`);
+      }
+
+      // MEXC Auth response format usually matches standard public API
+      let bids = data.bids || [];
+      let asks = data.asks || [];
+
+      if (!bids.length && !asks.length) {
+         // Try checking if it's wrapped
+         if (data.data) {
+             bids = data.data.bids || [];
+             asks = data.data.asks || [];
+         }
+      }
+
+      return this.transformMexcData({ bids, asks }, config.symbol);
+    } catch (error) {
+      console.error("Error in fetchMexcOrderBookAuth:", error);
       throw error;
     }
   }
