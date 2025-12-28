@@ -481,9 +481,14 @@ class OrderBookService {
   private async fetchMexcOrderBook(config: ApiConfig): Promise<OrderBook> {
     // Mapear símbolos específicos para MEXC
     const mexcSymbolMap: { [key: string]: string } = {
-      'VOLTINUUSDT': 'VOLTINUUSDT',
-      'VOLTINU-USDT': 'VOLTINUUSDT',
-      'VOLTINU_USDT': 'VOLTINUUSDT',
+      // VOLT (Volt Inu) em MEXC usa ticker VOLT, não VOLTINU
+      'VOLTUSDT': 'VOLTUSDT',
+      'VOLT-USDT': 'VOLTUSDT',
+      'VOLT_USDT': 'VOLTUSDT',
+      // Compatibilidade com entradas antigas
+      'VOLTINUUSDT': 'VOLTUSDT',
+      'VOLTINU-USDT': 'VOLTUSDT',
+      'VOLTINU_USDT': 'VOLTUSDT',
       'SHIBUSDT': 'SHIBUSDT',
       'LUNCUSDT': 'LUNCUSDT',
       'LUNAUSDT': 'LUNAUSDT',
@@ -568,9 +573,14 @@ class OrderBookService {
   private async fetchMexcOrderBookAuth(config: ApiConfig): Promise<OrderBook> {
     // Mapear símbolos específicos para MEXC
     const mexcSymbolMap: { [key: string]: string } = {
-      'VOLTINUUSDT': 'VOLTINUUSDT',
-      'VOLTINU-USDT': 'VOLTINUUSDT',
-      'VOLTINU_USDT': 'VOLTINUUSDT',
+      // VOLT (Volt Inu) em MEXC usa ticker VOLT, não VOLTINU
+      'VOLTUSDT': 'VOLTUSDT',
+      'VOLT-USDT': 'VOLTUSDT',
+      'VOLT_USDT': 'VOLTUSDT',
+      // Compatibilidade com entradas antigas
+      'VOLTINUUSDT': 'VOLTUSDT',
+      'VOLTINU-USDT': 'VOLTUSDT',
+      'VOLTINU_USDT': 'VOLTUSDT',
       'SHIBUSDT': 'SHIBUSDT',
       'LUNCUSDT': 'LUNCUSDT',
       'LUNAUSDT': 'LUNAUSDT',
