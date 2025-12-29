@@ -12,13 +12,13 @@ export default defineConfig(({ mode }) => ({
       "/kucoin": {
         target: "https://api.kucoin.com",
         changeOrigin: true,
-        secure: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/kucoin/, "")
       },
       "/mexc": {
         target: "https://api.mexc.com",
         changeOrigin: true,
-        secure: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/mexc/, "")
       }
     }

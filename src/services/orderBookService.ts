@@ -282,13 +282,19 @@ class OrderBookService {
     };
 
     try {
+      console.log(`Fetching from KuCoin V3 Auth URL: ${url}`);
+      console.log(`KuCoin V3 Auth Headers: KC-API-KEY-VERSION=${version}`);
+      
       const response = await fetch(url, { headers });
       if (!response.ok) {
         const errText = await response.text();
+        console.error(`KuCoin Auth HTTP Error: ${response.status} - ${errText}`);
         throw new Error(`Erro KuCoin v3: ${response.status} - ${errText}`);
       }
 
       const raw = await response.json();
+      console.log("KuCoin V3 Auth response:", raw);
+      
       if (raw.code && raw.code !== "200000") {
         throw new Error(raw.msg || `Erro KuCoin: ${raw.code}`);
       }
@@ -298,6 +304,10 @@ class OrderBookService {
       }
       return this.transformKucoinV3Data(payload, config.symbol);
     } catch (error) {
+      console.error("Error in fetchKucoinOrderBookV3Auth:", error);
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error("Falha na conexão com KuCoin v3 (Possível erro de CORS ou Proxy)");
+      }
       if (error instanceof Error) {
         throw new Error(`Falha KuCoin v3: ${error.message}`);
       }
@@ -481,14 +491,10 @@ class OrderBookService {
   private async fetchMexcOrderBook(config: ApiConfig): Promise<OrderBook> {
     // Mapear símbolos específicos para MEXC
     const mexcSymbolMap: { [key: string]: string } = {
-      // VOLT (Volt Inu) em MEXC usa ticker VOLT, não VOLTINU
-      'VOLTUSDT': 'VOLTUSDT',
-      'VOLT-USDT': 'VOLTUSDT',
-      'VOLT_USDT': 'VOLTUSDT',
-      // Compatibilidade com entradas antigas
-      'VOLTINUUSDT': 'VOLTUSDT',
-      'VOLTINU-USDT': 'VOLTUSDT',
-      'VOLTINU_USDT': 'VOLTUSDT',
+      'VOLTINUUSDT': 'VOLTINUUSDT',
+      'VOLTINU-USDT': 'VOLTINUUSDT',
+      'VOLTINU_USDT': 'VOLTINUUSDT',
+      'VOLT-USDT': 'VOLTINUUSDT',
       'SHIBUSDT': 'SHIBUSDT',
       'LUNCUSDT': 'LUNCUSDT',
       'LUNAUSDT': 'LUNAUSDT',
@@ -573,14 +579,10 @@ class OrderBookService {
   private async fetchMexcOrderBookAuth(config: ApiConfig): Promise<OrderBook> {
     // Mapear símbolos específicos para MEXC
     const mexcSymbolMap: { [key: string]: string } = {
-      // VOLT (Volt Inu) em MEXC usa ticker VOLT, não VOLTINU
-      'VOLTUSDT': 'VOLTUSDT',
-      'VOLT-USDT': 'VOLTUSDT',
-      'VOLT_USDT': 'VOLTUSDT',
-      // Compatibilidade com entradas antigas
-      'VOLTINUUSDT': 'VOLTUSDT',
-      'VOLTINU-USDT': 'VOLTUSDT',
-      'VOLTINU_USDT': 'VOLTUSDT',
+      'VOLTINUUSDT': 'VOLTINUUSDT',
+      'VOLTINU-USDT': 'VOLTINUUSDT',
+      'VOLTINU_USDT': 'VOLTINUUSDT',
+      'VOLT-USDT': 'VOLTINUUSDT',
       'SHIBUSDT': 'SHIBUSDT',
       'LUNCUSDT': 'LUNCUSDT',
       'LUNAUSDT': 'LUNAUSDT',
@@ -599,7 +601,7 @@ class OrderBookService {
     
     // MEXC requer parâmetros na query string para assinatura
     // Aumentando limite para 2000 conforme solicitado
-    const queryParams = `symbol=${symbol}&limit=2000&timestamp=${timestamp}`;
+    const queryParams = `symbol=${symbol}&limit=1000&timestamp=${timestamp}`;
     const signature = await this.hmacSha256Hex(queryParams, config.apiSecret);
     const url = `${baseUrl}${path}?${queryParams}&signature=${signature}`;
 
