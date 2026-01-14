@@ -1637,65 +1637,74 @@ class OrderBookService {
   }
 
   private async fetchBtccOrderBook(config: ApiConfig): Promise<OrderBook> {
-    // BTCC usa o formato BTCUSDT para símbolos spot
-    const symbol = config.symbol.replace('-', '');
-    
-    const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`,
-      `${this.baseUrls.btcc}${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`
+    // BTCC aceita variações de símbolo (BTCUSDT e BTC_USDT)
+    const baseSymbol = config.symbol.replace('-', '');
+    const symbolVariants = [
+      baseSymbol,
+      baseSymbol.replace(/([A-Z]+)(USDT|USDC|USD1)$/, '$1_$2')
     ];
+    
+    const makeUrls = (sym: string) => ([
+      `https://corsproxy.io/?${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${sym}&limit=200`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${sym}&limit=200`)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${sym}&limit=200`)}`,
+      `${this.baseUrls.btcc}${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${sym}&limit=200`)}`
+    ]);
     
     let lastError: Error | null = null;
     
-    for (const url of proxies) {
-      try {
-        console.log("Fetching from BTCC URL:", url);
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+    for (const sym of symbolVariants) {
+      const proxies = makeUrls(sym);
+      
+      for (const url of proxies) {
+        try {
+          console.log("Fetching from BTCC URL:", url);
+          
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
 
-        const responseData = await response.json();
-        
-        let data = responseData;
-        if (responseData.contents) {
-          if (typeof responseData.contents === 'string') {
-            if (responseData.contents.toLowerCase().includes('<html') || 
-                responseData.contents.includes('403') ||
-                responseData.contents === 'Not Found') {
-              throw new Error("Proxy blocked or not found");
+          const responseData = await response.json();
+          
+          let data = responseData;
+          if (responseData.contents) {
+            if (typeof responseData.contents === 'string') {
+              if (responseData.contents.toLowerCase().includes('<html') || 
+                  responseData.contents.includes('403') ||
+                  responseData.contents === 'Not Found') {
+                throw new Error("Proxy blocked or not found");
+              }
+              data = JSON.parse(responseData.contents);
+            } else {
+              data = responseData.contents;
             }
-            data = JSON.parse(responseData.contents);
-          } else {
-            data = responseData.contents;
           }
-        }
-        
-        console.log("BTCC API response:", data);
+          
+          console.log("BTCC API response:", data);
 
-        // Verificar diferentes formatos de resposta
-        if (data.code === 0 || data.code === "0") {
-          if (data.data && (data.data.bids || data.data.asks)) {
-            return this.transformBtccData(data.data, config.symbol);
+          // Verificar diferentes formatos de resposta
+          if (data.code === 0 || data.code === "0") {
+            if (data.data && (data.data.bids || data.data.asks)) {
+              return this.transformBtccData(data.data, config.symbol);
+            }
           }
+          
+          if (data.bids && data.asks) {
+            return this.transformBtccData(data, config.symbol);
+          }
+          
+          if (data.result && (data.result.bids || data.result.asks)) {
+            return this.transformBtccData(data.result, config.symbol);
+          }
+          
+          throw new Error(data.msg || data.message || "Invalid data structure");
+        } catch (error) {
+          console.error(`BTCC proxy failed (${url}) [symbol ${sym}]:`, error);
+          lastError = error as Error;
+          continue;
         }
-        
-        if (data.bids && data.asks) {
-          return this.transformBtccData(data, config.symbol);
-        }
-        
-        if (data.result && (data.result.bids || data.result.asks)) {
-          return this.transformBtccData(data.result, config.symbol);
-        }
-        
-        throw new Error(data.msg || data.message || "Invalid data structure");
-      } catch (error) {
-        console.error(`BTCC proxy failed (${url}):`, error);
-        lastError = error as Error;
-        continue;
       }
     }
     
