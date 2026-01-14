@@ -1,4 +1,5 @@
 import { ApiConfig, OrderBook, OrderBookEntry } from "@/types/orderbook";
+import sha256 from "js-sha256";
 
 class OrderBookService {
   private baseUrls = {
@@ -190,71 +191,48 @@ class OrderBookService {
   }
 
   private async hmacSha256Base64(message: string, secret: string): Promise<string> {
-    const subtle = globalThis?.crypto?.subtle;
-    if (!subtle) {
-      throw new Error("Web Crypto API não disponível");
+    const subtle = (globalThis as any)?.crypto?.subtle ?? null;
+    if (subtle) {
+      const enc = new TextEncoder();
+      const key = await subtle.importKey(
+        "raw",
+        enc.encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+      const signature = await subtle.sign("HMAC", key, enc.encode(message));
+      const bytes = new Uint8Array(signature);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
     }
-    const enc = new TextEncoder();
-    const key = await subtle.importKey(
-      "raw",
-      enc.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-    const signature = await subtle.sign("HMAC", key, enc.encode(message));
-    const bytes = new Uint8Array(signature);
+    const hex = (sha256 as any).hmac(secret, message) as string;
     let binary = "";
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
+    for (let i = 0; i < hex.length; i += 2) {
+      binary += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
     }
     return btoa(binary);
   }
 
   private async hmacSha256Hex(message: string, secret: string): Promise<string> {
-    const subtle = globalThis?.crypto?.subtle;
-    if (!subtle) {
-      throw new Error("Web Crypto API não disponível");
+    const subtle = (globalThis as any)?.crypto?.subtle ?? null;
+    if (subtle) {
+      const enc = new TextEncoder();
+      const key = await subtle.importKey(
+        "raw",
+        enc.encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+      const signature = await subtle.sign("HMAC", key, enc.encode(message));
+      const bytes = new Uint8Array(signature);
+      return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
     }
-    const enc = new TextEncoder();
-    const key = await subtle.importKey(
-      "raw",
-      enc.encode(secret),
-      { name: "HMAC", hash: "SHA-256" },
-      false,
-      ["sign"]
-    );
-    const signature = await subtle.sign("HMAC", key, enc.encode(message));
-    const bytes = new Uint8Array(signature);
-    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  private transformKucoinV3Data(data: any, symbol: string): OrderBook {
-    const transformEntries = (entries: any[]): OrderBookEntry[] => {
-      if (!Array.isArray(entries)) {
-        console.error("KuCoin V3 entries is not an array:", entries);
-        return [];
-      }
-      return entries.map((entry) => {
-        if (Array.isArray(entry) && entry.length >= 2) {
-          return {
-            price: entry[0].toString(),
-            quantity: entry[1].toString()
-          };
-        }
-        return {
-          price: "0",
-          quantity: "0"
-        };
-      });
-    };
-
-    return {
-      symbol,
-      bids: transformEntries(data.bids || []),
-      asks: transformEntries(data.asks || []),
-      timestamp: data.time || Date.now()
-    };
+    return (sha256 as any).hmac(secret, message) as string;
   }
 
   private async fetchKucoinOrderBookV3Auth(config: ApiConfig): Promise<OrderBook> {
@@ -1080,6 +1058,22 @@ class OrderBookService {
       symbol,
       bids: transformedBids,
       asks: transformedAsks,
+      timestamp: Date.now()
+    };
+  }
+
+  private transformKucoinV3Data(data: any, symbol: string): OrderBook {
+    const transformEntries = (entries: string[][]): OrderBookEntry[] => {
+      return entries.map(([price, quantity]) => ({
+        price,
+        quantity
+      }));
+    };
+
+    return {
+      symbol,
+      bids: transformEntries(data.bids || []),
+      asks: transformEntries(data.asks || []),
       timestamp: Date.now()
     };
   }
