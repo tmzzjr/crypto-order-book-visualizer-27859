@@ -33,6 +33,8 @@ class OrderBookService {
         return this.fetchBinanceOrderBook(config);
       case "kucoin":
         return this.fetchKucoinOrderBook(config);
+      case "kucoin-auth":
+        return this.fetchKucoinOrderBookV3Auth(config);
       case "kcex":
         return this.fetchKcexOrderBook(config);
       case "kraken":
@@ -188,48 +190,71 @@ class OrderBookService {
   }
 
   private async hmacSha256Base64(message: string, secret: string): Promise<string> {
-    const subtle = (globalThis as any)?.crypto?.subtle ?? null;
-    if (subtle) {
-      const enc = new TextEncoder();
-      const key = await subtle.importKey(
-        "raw",
-        enc.encode(secret),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"]
-      );
-      const signature = await subtle.sign("HMAC", key, enc.encode(message));
-      const bytes = new Uint8Array(signature);
-      let binary = "";
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      return btoa(binary);
+    const subtle = globalThis?.crypto?.subtle;
+    if (!subtle) {
+      throw new Error("Web Crypto API não disponível");
     }
-    const hex = (sha256 as any).hmac(secret, message) as string;
+    const enc = new TextEncoder();
+    const key = await subtle.importKey(
+      "raw",
+      enc.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signature = await subtle.sign("HMAC", key, enc.encode(message));
+    const bytes = new Uint8Array(signature);
     let binary = "";
-    for (let i = 0; i < hex.length; i += 2) {
-      binary += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
     }
     return btoa(binary);
   }
 
   private async hmacSha256Hex(message: string, secret: string): Promise<string> {
-    const subtle = (globalThis as any)?.crypto?.subtle ?? null;
-    if (subtle) {
-      const enc = new TextEncoder();
-      const key = await subtle.importKey(
-        "raw",
-        enc.encode(secret),
-        { name: "HMAC", hash: "SHA-256" },
-        false,
-        ["sign"]
-      );
-      const signature = await subtle.sign("HMAC", key, enc.encode(message));
-      const bytes = new Uint8Array(signature);
-      return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    const subtle = globalThis?.crypto?.subtle;
+    if (!subtle) {
+      throw new Error("Web Crypto API não disponível");
     }
-    return (sha256 as any).hmac(secret, message) as string;
+    const enc = new TextEncoder();
+    const key = await subtle.importKey(
+      "raw",
+      enc.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signature = await subtle.sign("HMAC", key, enc.encode(message));
+    const bytes = new Uint8Array(signature);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  private transformKucoinV3Data(data: any, symbol: string): OrderBook {
+    const transformEntries = (entries: any[]): OrderBookEntry[] => {
+      if (!Array.isArray(entries)) {
+        console.error("KuCoin V3 entries is not an array:", entries);
+        return [];
+      }
+      return entries.map((entry) => {
+        if (Array.isArray(entry) && entry.length >= 2) {
+          return {
+            price: entry[0].toString(),
+            quantity: entry[1].toString()
+          };
+        }
+        return {
+          price: "0",
+          quantity: "0"
+        };
+      });
+    };
+
+    return {
+      symbol,
+      bids: transformEntries(data.bids || []),
+      asks: transformEntries(data.asks || []),
+      timestamp: data.time || Date.now()
+    };
   }
 
   private async fetchKucoinOrderBookV3Auth(config: ApiConfig): Promise<OrderBook> {
