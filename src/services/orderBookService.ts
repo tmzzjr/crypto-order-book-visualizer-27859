@@ -595,54 +595,107 @@ class OrderBookService {
       throw new Error("MEXC autenticado requer API Key e Secret");
     }
 
-    const baseUrl = import.meta.env?.DEV ? "/mexc" : "https://api.mexc.com";
-    const path = "/api/v3/depth";
     const timestamp = Date.now().toString();
-    
-    // MEXC requer parâmetros na query string para assinatura
-    // Aumentando limite para 2000 conforme solicitado
     const queryParams = `symbol=${symbol}&limit=1000&timestamp=${timestamp}`;
     const signature = await this.hmacSha256Hex(queryParams, config.apiSecret);
-    const url = `${baseUrl}${path}?${queryParams}&signature=${signature}`;
+    
+    // Em produção, usar proxy CORS; em desenvolvimento, usar proxy local
+    const isDev = import.meta.env?.DEV;
+    
+    if (isDev) {
+      const url = `/mexc/api/v3/depth?${queryParams}&signature=${signature}`;
+      const headers: Record<string, string> = {
+        "X-MEXC-APIKEY": config.apiKey,
+        "Content-Type": "application/json"
+      };
 
-    const headers: Record<string, string> = {
-      "X-MEXC-APIKEY": config.apiKey,
-      "Content-Type": "application/json"
-    };
+      try {
+        console.log("Fetching from MEXC Auth URL (dev):", url);
+        
+        const response = await fetch(url, { headers });
+        
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Erro MEXC Auth: ${response.status} - ${errText}`);
+        }
 
-    try {
-      console.log("Fetching from MEXC Auth URL:", url);
+        const data = await response.json();
+        console.log("MEXC Auth API response:", data);
+
+        if (data.code && data.code !== 200) {
+           throw new Error(data.msg || `Erro MEXC: ${data.code}`);
+        }
+
+        let bids = data.bids || [];
+        let asks = data.asks || [];
+
+        if (!bids.length && !asks.length && data.data) {
+          bids = data.data.bids || [];
+          asks = data.data.asks || [];
+        }
+
+        return this.transformMexcData({ bids, asks }, config.symbol);
+      } catch (error) {
+        console.error("Error in fetchMexcOrderBookAuth (dev):", error);
+        throw error;
+      }
+    } else {
+      // Em produção, usar proxies CORS com headers customizados
+      const originalUrl = `https://api.mexc.com/api/v3/depth?${queryParams}&signature=${signature}`;
       
-      const response = await fetch(url, { headers });
+      const proxies = [
+        {
+          url: `https://corsproxy.io/?${encodeURIComponent(originalUrl)}`,
+          needsHeaders: false
+        },
+        {
+          url: `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`,
+          needsHeaders: false
+        }
+      ];
       
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Erro MEXC Auth: ${response.status} - ${errText}`);
+      let lastError: Error | null = null;
+      
+      for (const proxy of proxies) {
+        try {
+          console.log("Fetching from MEXC Auth URL (prod):", proxy.url);
+          
+          // Nota: proxies públicos não suportam headers customizados
+          // A API da MEXC depth é pública, não precisa de autenticação real para ler
+          const response = await fetch(proxy.url);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log("MEXC Auth API response:", data);
+
+          if (data.code && data.code !== 200 && data.code !== 0) {
+            throw new Error(data.msg || `Erro MEXC: ${data.code}`);
+          }
+
+          let bids = data.bids || [];
+          let asks = data.asks || [];
+
+          if (!bids.length && !asks.length && data.data) {
+            bids = data.data.bids || [];
+            asks = data.data.asks || [];
+          }
+
+          if (!bids.length && !asks.length) {
+            throw new Error("Order book vazio");
+          }
+
+          return this.transformMexcData({ bids, asks }, config.symbol);
+        } catch (error) {
+          console.error(`MEXC Auth proxy failed:`, error);
+          lastError = error as Error;
+          continue;
+        }
       }
-
-      const data = await response.json();
-      console.log("MEXC Auth API response:", data);
-
-      if (data.code && data.code !== 200) {
-         throw new Error(data.msg || `Erro MEXC: ${data.code}`);
-      }
-
-      // MEXC Auth response format usually matches standard public API
-      let bids = data.bids || [];
-      let asks = data.asks || [];
-
-      if (!bids.length && !asks.length) {
-         // Try checking if it's wrapped
-         if (data.data) {
-             bids = data.data.bids || [];
-             asks = data.data.asks || [];
-         }
-      }
-
-      return this.transformMexcData({ bids, asks }, config.symbol);
-    } catch (error) {
-      console.error("Error in fetchMexcOrderBookAuth:", error);
-      throw error;
+      
+      throw new Error(`Falha na conexão MEXC: ${lastError?.message || 'Não foi possível conectar'}`);
     }
   }
 
