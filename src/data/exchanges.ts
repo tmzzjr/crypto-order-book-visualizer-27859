@@ -122,6 +122,17 @@ export const EXCHANGES: ExchangeConfig[] = [
     ]
   },
   {
+    name: "MEXC (Autenticado)",
+    value: "mexc-auth",
+    requiresAuth: true,
+    maxOrders: 2000,
+    symbols: [
+      "BTCUSDT", "BTCUSDC", "BTCUSD1", "SHIBUSDT", "SHIBUSDC", "LUNCUSDT", "LUNCUSDC", "LUNAUSDT", "LUNAUSDC",
+      "XLMUSDT", "XLMUSDC", "XRPUSDT", "XRPUSDC", "XRPUSD1", "ETHUSD1", "SOLUSD1", "KISHUUSDT", "VOLTINUUSDT",
+      "BNBTIGERUSDT", "PEPEUSDT", "PEPEUSDC", "WENUSDT", "VINUUSDT", "BONKUSDT", "TURBOUSDT", "TURBOUSDC", "WKCUSDT"
+    ]
+  },
+  {
     name: "Bitmart",
     value: "bitmart",
     requiresAuth: false,

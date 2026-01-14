@@ -43,6 +43,8 @@ class OrderBookService {
         return this.fetchBitfinexOrderBook(config);
       case "mexc":
         return this.fetchMexcOrderBook(config);
+      case "mexc-auth":
+        return this.fetchMexcOrderBookAuth(config);
       case "bitget":
         return this.fetchBitgetOrderBook(config);
       case "okx":
@@ -183,6 +185,131 @@ class OrderBookService {
     }
     
     throw new Error(`Erro KuCoin: ${lastError?.message || 'Não foi possível conectar'}`);
+  }
+
+  private async hmacSha256Base64(message: string, secret: string): Promise<string> {
+    const subtle = (globalThis as any)?.crypto?.subtle ?? null;
+    if (subtle) {
+      const enc = new TextEncoder();
+      const key = await subtle.importKey(
+        "raw",
+        enc.encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+      const signature = await subtle.sign("HMAC", key, enc.encode(message));
+      const bytes = new Uint8Array(signature);
+      let binary = "";
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+    const hex = (sha256 as any).hmac(secret, message) as string;
+    let binary = "";
+    for (let i = 0; i < hex.length; i += 2) {
+      binary += String.fromCharCode(parseInt(hex.substr(i, 2), 16));
+    }
+    return btoa(binary);
+  }
+
+  private async hmacSha256Hex(message: string, secret: string): Promise<string> {
+    const subtle = (globalThis as any)?.crypto?.subtle ?? null;
+    if (subtle) {
+      const enc = new TextEncoder();
+      const key = await subtle.importKey(
+        "raw",
+        enc.encode(secret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"]
+      );
+      const signature = await subtle.sign("HMAC", key, enc.encode(message));
+      const bytes = new Uint8Array(signature);
+      return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    return (sha256 as any).hmac(secret, message) as string;
+  }
+
+  private async fetchKucoinOrderBookV3Auth(config: ApiConfig): Promise<OrderBook> {
+    let symbol = config.symbol;
+    if (symbol === "LUNC-USDT") {
+      symbol = "LUNC-USDT";
+    } else if (symbol === "LUNC-USDC") {
+      symbol = "LUNC-USDC";
+    } else if (symbol === "LUNA-USDT") {
+      symbol = "LUNA-USDT";
+    } else if (symbol === "LUNA-USDC") {
+      symbol = "LUNA-USDC";
+    } else if (symbol === "VOLTINU-USDT") {
+      symbol = "VOLT-USDT";
+    } else if (symbol === "TURBO-USDT") {
+      symbol = "TURBO-USDT";
+    } else if (symbol === "TURBO-USDC") {
+      symbol = "TURBO-USDC";
+    }
+
+    if (!config.apiKey || !config.apiSecret || !config.apiPassphrase) {
+      throw new Error("KuCoin autenticado requer API Key, Secret e Passphrase");
+    }
+
+    const baseUrl = import.meta.env?.DEV ? "/kucoin" : "https://api.kucoin.com";
+    const path = "/api/v3/market/orderbook/level2";
+    const query = `?symbol=${encodeURIComponent(symbol)}`;
+    const url = `${baseUrl}${path}${query}`;
+
+    const timestamp = Date.now().toString();
+    const method = "GET";
+    const preSign = `${timestamp}${method}${path}${query}`;
+    const sign = await this.hmacSha256Base64(preSign, config.apiSecret);
+
+    const version = config.apiKeyVersion ?? 2;
+    const passphraseHeader =
+      version === 2
+        ? await this.hmacSha256Base64(config.apiPassphrase, config.apiSecret)
+        : config.apiPassphrase;
+
+    const headers: Record<string, string> = {
+      "KC-API-KEY": config.apiKey,
+      "KC-API-SIGN": sign,
+      "KC-API-TIMESTAMP": timestamp,
+      "KC-API-PASSPHRASE": passphraseHeader,
+      "KC-API-KEY-VERSION": String(version)
+    };
+
+    try {
+      console.log(`Fetching from KuCoin V3 Auth URL: ${url}`);
+      console.log(`KuCoin V3 Auth Headers: KC-API-KEY-VERSION=${version}`);
+      
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`KuCoin Auth HTTP Error: ${response.status} - ${errText}`);
+        throw new Error(`Erro KuCoin v3: ${response.status} - ${errText}`);
+      }
+
+      const raw = await response.json();
+      console.log("KuCoin V3 Auth response:", raw);
+      
+      if (raw.code && raw.code !== "200000") {
+        throw new Error(raw.msg || `Erro KuCoin: ${raw.code}`);
+      }
+      const payload = raw.data ?? raw;
+      if (!payload || !payload.bids || !payload.asks) {
+        throw new Error("Dados inválidos da API KuCoin v3");
+      }
+      return this.transformKucoinV3Data(payload, config.symbol);
+    } catch (error) {
+      console.error("Error in fetchKucoinOrderBookV3Auth:", error);
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        throw new Error("Falha na conexão com KuCoin v3 (Possível erro de CORS ou Proxy)");
+      }
+      if (error instanceof Error) {
+        throw new Error(`Falha KuCoin v3: ${error.message}`);
+      }
+      throw error;
+    }
   }
 
   private async fetchKcexOrderBook(config: ApiConfig): Promise<OrderBook> {
@@ -364,6 +491,7 @@ class OrderBookService {
       'VOLTINUUSDT': 'VOLTINUUSDT',
       'VOLTINU-USDT': 'VOLTINUUSDT',
       'VOLTINU_USDT': 'VOLTINUUSDT',
+      'VOLT-USDT': 'VOLTINUUSDT',
       'SHIBUSDT': 'SHIBUSDT',
       'LUNCUSDT': 'LUNCUSDT',
       'LUNAUSDT': 'LUNAUSDT',
@@ -441,6 +569,76 @@ class OrderBookService {
       if (error instanceof SyntaxError) {
         throw new Error("Erro ao processar dados da MEXC - formato inválido");
       }
+      throw error;
+    }
+  }
+
+  private async fetchMexcOrderBookAuth(config: ApiConfig): Promise<OrderBook> {
+    // Mapear símbolos específicos para MEXC
+    const mexcSymbolMap: { [key: string]: string } = {
+      'VOLTINUUSDT': 'VOLTINUUSDT',
+      'VOLTINU-USDT': 'VOLTINUUSDT',
+      'VOLTINU_USDT': 'VOLTINUUSDT',
+      'VOLT-USDT': 'VOLTINUUSDT',
+      'SHIBUSDT': 'SHIBUSDT',
+      'LUNCUSDT': 'LUNCUSDT',
+      'LUNAUSDT': 'LUNAUSDT',
+      'TURBOUSDT': 'TURBOUSDT'
+    };
+    
+    const symbol = mexcSymbolMap[config.symbol] || config.symbol;
+
+    if (!config.apiKey || !config.apiSecret) {
+      throw new Error("MEXC autenticado requer API Key e Secret");
+    }
+
+    const baseUrl = import.meta.env?.DEV ? "/mexc" : "https://api.mexc.com";
+    const path = "/api/v3/depth";
+    const timestamp = Date.now().toString();
+    
+    // MEXC requer parâmetros na query string para assinatura
+    // Aumentando limite para 2000 conforme solicitado
+    const queryParams = `symbol=${symbol}&limit=1000&timestamp=${timestamp}`;
+    const signature = await this.hmacSha256Hex(queryParams, config.apiSecret);
+    const url = `${baseUrl}${path}?${queryParams}&signature=${signature}`;
+
+    const headers: Record<string, string> = {
+      "X-MEXC-APIKEY": config.apiKey,
+      "Content-Type": "application/json"
+    };
+
+    try {
+      console.log("Fetching from MEXC Auth URL:", url);
+      
+      const response = await fetch(url, { headers });
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Erro MEXC Auth: ${response.status} - ${errText}`);
+      }
+
+      const data = await response.json();
+      console.log("MEXC Auth API response:", data);
+
+      if (data.code && data.code !== 200) {
+         throw new Error(data.msg || `Erro MEXC: ${data.code}`);
+      }
+
+      // MEXC Auth response format usually matches standard public API
+      let bids = data.bids || [];
+      let asks = data.asks || [];
+
+      if (!bids.length && !asks.length) {
+         // Try checking if it's wrapped
+         if (data.data) {
+             bids = data.data.bids || [];
+             asks = data.data.asks || [];
+         }
+      }
+
+      return this.transformMexcData({ bids, asks }, config.symbol);
+    } catch (error) {
+      console.error("Error in fetchMexcOrderBookAuth:", error);
       throw error;
     }
   }
@@ -1420,65 +1618,74 @@ class OrderBookService {
   }
 
   private async fetchBtccOrderBook(config: ApiConfig): Promise<OrderBook> {
-    // BTCC usa o formato BTCUSDT para símbolos spot
-    const symbol = config.symbol.replace('-', '');
-    
-    const proxies = [
-      `https://corsproxy.io/?${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`,
-      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`,
-      `${this.baseUrls.btcc}${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${symbol}&limit=200`)}`
+    // BTCC aceita variações de símbolo (BTCUSDT e BTC_USDT)
+    const baseSymbol = config.symbol.replace('-', '');
+    const symbolVariants = [
+      baseSymbol,
+      baseSymbol.replace(/([A-Z]+)(USDT|USDC|USD1)$/, '$1_$2')
     ];
+    
+    const makeUrls = (sym: string) => ([
+      `https://corsproxy.io/?${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${sym}&limit=200`)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${sym}&limit=200`)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${sym}&limit=200`)}`,
+      `${this.baseUrls.btcc}${encodeURIComponent(`https://api.btcc.com/api/v1/spot/depth?symbol=${sym}&limit=200`)}`
+    ]);
     
     let lastError: Error | null = null;
     
-    for (const url of proxies) {
-      try {
-        console.log("Fetching from BTCC URL:", url);
-        
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
+    for (const sym of symbolVariants) {
+      const proxies = makeUrls(sym);
+      
+      for (const url of proxies) {
+        try {
+          console.log("Fetching from BTCC URL:", url);
+          
+          const response = await fetch(url);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
 
-        const responseData = await response.json();
-        
-        let data = responseData;
-        if (responseData.contents) {
-          if (typeof responseData.contents === 'string') {
-            if (responseData.contents.toLowerCase().includes('<html') || 
-                responseData.contents.includes('403') ||
-                responseData.contents === 'Not Found') {
-              throw new Error("Proxy blocked or not found");
+          const responseData = await response.json();
+          
+          let data = responseData;
+          if (responseData.contents) {
+            if (typeof responseData.contents === 'string') {
+              if (responseData.contents.toLowerCase().includes('<html') || 
+                  responseData.contents.includes('403') ||
+                  responseData.contents === 'Not Found') {
+                throw new Error("Proxy blocked or not found");
+              }
+              data = JSON.parse(responseData.contents);
+            } else {
+              data = responseData.contents;
             }
-            data = JSON.parse(responseData.contents);
-          } else {
-            data = responseData.contents;
           }
-        }
-        
-        console.log("BTCC API response:", data);
+          
+          console.log("BTCC API response:", data);
 
-        // Verificar diferentes formatos de resposta
-        if (data.code === 0 || data.code === "0") {
-          if (data.data && (data.data.bids || data.data.asks)) {
-            return this.transformBtccData(data.data, config.symbol);
+          // Verificar diferentes formatos de resposta
+          if (data.code === 0 || data.code === "0") {
+            if (data.data && (data.data.bids || data.data.asks)) {
+              return this.transformBtccData(data.data, config.symbol);
+            }
           }
+          
+          if (data.bids && data.asks) {
+            return this.transformBtccData(data, config.symbol);
+          }
+          
+          if (data.result && (data.result.bids || data.result.asks)) {
+            return this.transformBtccData(data.result, config.symbol);
+          }
+          
+          throw new Error(data.msg || data.message || "Invalid data structure");
+        } catch (error) {
+          console.error(`BTCC proxy failed (${url}) [symbol ${sym}]:`, error);
+          lastError = error as Error;
+          continue;
         }
-        
-        if (data.bids && data.asks) {
-          return this.transformBtccData(data, config.symbol);
-        }
-        
-        if (data.result && (data.result.bids || data.result.asks)) {
-          return this.transformBtccData(data.result, config.symbol);
-        }
-        
-        throw new Error(data.msg || data.message || "Invalid data structure");
-      } catch (error) {
-        console.error(`BTCC proxy failed (${url}):`, error);
-        lastError = error as Error;
-        continue;
       }
     }
     
