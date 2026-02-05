@@ -97,6 +97,28 @@ export const EXCHANGES: ExchangeConfig[] = [
     ]
   },
   {
+    name: "Hibt",
+    value: "hibt",
+    requiresAuth: false,
+    maxOrders: 100,
+    symbols: [
+      "BTC/USDT", "ETH/USDT", "XRP/USDT", "SOL/USDT", "BNB/USDT", "DOGE/USDT", "SHIB/USDT", 
+      "PEPE/USDT", "BONK/USDT", "LUNC/USDT", "LUNA/USDT", "XLM/USDT", "WEN/USDT", "VINU/USDT", 
+      "TURBO/USDT", "VOLT/USDT"
+    ]
+  },
+  {
+    name: "LBank",
+    value: "lbank",
+    requiresAuth: false,
+    maxOrders: 100,
+    symbols: [
+      "BTC/USDT", "ETH/USDT", "XRP/USDT", "SOL/USDT", "BNB/USDT", "DOGE/USDT", "SHIB/USDT", 
+      "PEPE/USDT", "BONK/USDT", "LUNC/USDT", "LUNA/USDT", "XLM/USDT", "WEN/USDT", "VINU/USDT", 
+      "TURBO/USDT", "VOLT/USDT"
+    ]
+  },
+  {
     name: "OKX",
     value: "okx",
     requiresAuth: false,

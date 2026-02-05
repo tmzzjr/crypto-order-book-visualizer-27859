@@ -22,7 +22,9 @@ class OrderBookService {
     novadax: "https://api.allorigins.win/get?url=",
     xt: "https://api.allorigins.win/get?url=",
     deepcoin: "https://api.allorigins.win/get?url=",
-    btcc: "https://api.allorigins.win/get?url="
+    btcc: "https://api.allorigins.win/get?url=",
+    hibt: "https://api.hibt0.com/open-api/v1/market",
+    lbank: "https://api.lbkex.com/v2/depth.do"
   };
 
   async fetchOrderBook(config: ApiConfig): Promise<OrderBook> {
@@ -72,6 +74,10 @@ class OrderBookService {
         return this.fetchDeepcoinOrderBook(config);
       case "btcc":
         return this.fetchBtccOrderBook(config);
+      case "hibt":
+        return this.fetchHibtOrderBook(config);
+      case "lbank":
+        return this.fetchLbankOrderBook(config);
       default:
         throw new Error(`Exchange ${config.exchange} não suportada`);
     }
@@ -1718,6 +1724,149 @@ class OrderBookService {
           return {
             price: entry.price.toString(),
             quantity: (entry.amount || entry.quantity || entry.size).toString()
+          };
+        }
+        return {
+          price: "0",
+          quantity: "0"
+        };
+      });
+    };
+
+    return {
+      symbol,
+      bids: transformEntries(data.bids || []),
+      asks: transformEntries(data.asks || []),
+      timestamp: Date.now()
+    };
+  }
+
+  private async fetchHibtOrderBook(config: ApiConfig): Promise<OrderBook> {
+    const baseUrl = "/hibt/open-api/v1/market/depth";
+    
+    // Tenta diferentes formatos de símbolo
+    const symbolVariations = [
+        config.symbol, // BTC/USDT
+        config.symbol.replace('/', '_'), // BTC_USDT
+        config.symbol.replace('/', '') // BTCUSDT
+    ];
+
+    let lastError: any;
+
+    for (const symbol of symbolVariations) {
+        try {
+            const url = `${baseUrl}?symbol=${encodeURIComponent(symbol)}&depth=20`;
+            console.log(`Fetching from Hibt URL: ${url}`);
+
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`HTTP ${response.status}: ${text}`);
+            }
+
+            const data = await response.json();
+            console.log("Hibt API response:", data);
+
+            if (data.code === 0 || data.code === "0") {
+                let orderBookData = data.data;
+                // Se data.data tiver bids/asks diretamente ou estiver dentro de 'tick'
+                if (orderBookData.tick) {
+                    orderBookData = orderBookData.tick;
+                }
+                
+                if (orderBookData && (orderBookData.bids || orderBookData.asks)) {
+                    return this.transformHibtData(orderBookData, config.symbol);
+                }
+            }
+            
+            throw new Error(data.message || data.msg || "Hibt API Error or Invalid Structure");
+        } catch (error) {
+            console.warn(`Failed to fetch Hibt for symbol ${symbol}:`, error);
+            lastError = error;
+        }
+    }
+
+    throw new Error(`Hibt fetch failed: ${lastError?.message}`);
+  }
+
+  private transformHibtData(data: any, symbol: string): OrderBook {
+      const transformEntries = (entries: any[]): OrderBookEntry[] => {
+          if (!Array.isArray(entries)) return [];
+          return entries.map(entry => {
+              if (Array.isArray(entry)) {
+                  return {
+                      price: entry[0].toString(),
+                      quantity: entry[1].toString()
+                  };
+              }
+              return {
+                  price: "0",
+                  quantity: "0"
+              };
+          });
+      };
+
+      return {
+          symbol,
+          bids: transformEntries(data.bids || []),
+          asks: transformEntries(data.asks || []),
+          timestamp: Date.now()
+      };
+  }
+
+  private async fetchLbankOrderBook(config: ApiConfig): Promise<OrderBook> {
+    const baseUrl = "/lbank/v2/depth.do";
+    
+    // Converter símbolo para formato LBank (eth_btc)
+    const symbolVariations = [
+      config.symbol.toLowerCase().replace('/', '_'), // btc_usdt
+      config.symbol.toLowerCase().replace('/', ''), // btcusdt
+      config.symbol.toUpperCase().replace('/', '_')  // BTC_USDT (caso aceite uppercase)
+    ];
+
+    let lastError: any;
+
+    for (const symbol of symbolVariations) {
+      try {
+        const url = `${baseUrl}?symbol=${symbol}&size=60`;
+        console.log(`Fetching from LBank URL: ${url}`);
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`HTTP ${response.status}: ${text}`);
+        }
+
+        const data = await response.json();
+        console.log("LBank API response:", data);
+
+        if (data.result === "true" || data.result === true || (data.data && (data.data.bids || data.data.asks))) {
+          const orderBookData = data.data || data;
+          if (orderBookData.bids || orderBookData.asks) {
+            return this.transformLbankData(orderBookData, config.symbol);
+          }
+        }
+        
+        throw new Error(data.msg || data.message || "LBank API Error or Invalid Structure");
+      } catch (error) {
+        console.warn(`Failed to fetch LBank for symbol ${symbol}:`, error);
+        lastError = error;
+      }
+    }
+
+    throw new Error(`LBank fetch failed: ${lastError?.message}`);
+  }
+
+  private transformLbankData(data: any, symbol: string): OrderBook {
+    const transformEntries = (entries: any[]): OrderBookEntry[] => {
+      if (!Array.isArray(entries)) return [];
+      return entries.map(entry => {
+        if (Array.isArray(entry) && entry.length >= 2) {
+          return {
+            price: entry[0].toString(),
+            quantity: entry[1].toString()
           };
         }
         return {

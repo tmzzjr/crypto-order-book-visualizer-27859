@@ -20,6 +20,18 @@ export default defineConfig(({ mode }) => ({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/mexc/, "")
+      },
+      "/hibt": {
+        target: "https://api.hibt0.com",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/hibt/, "")
+      },
+      "/lbank": {
+        target: "https://api.lbkex.com",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/lbank/, "")
       }
     }
   },
