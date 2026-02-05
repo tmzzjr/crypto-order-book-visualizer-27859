@@ -1,4 +1,5 @@
 import { ApiConfig, OrderBook, OrderBookEntry } from "@/types/orderbook";
+import { supabase } from "@/integrations/supabase/client";
 import sha256 from "js-sha256";
 
 class OrderBookService {
@@ -597,52 +598,43 @@ class OrderBookService {
     
     const symbol = mexcSymbolMap[config.symbol] || config.symbol;
 
-    if (!config.apiKey || !config.apiSecret) {
-      throw new Error("MEXC autenticado requer API Key e Secret");
-    }
-
-    const baseUrl = import.meta.env?.DEV ? "/mexc" : "https://api.mexc.com";
-    const path = "/api/v3/depth";
-    const timestamp = Date.now().toString();
-    
-    // MEXC requer parâmetros na query string para assinatura
-    // Aumentando limite para 2000 conforme solicitado
-    const queryParams = `symbol=${symbol}&limit=1000&timestamp=${timestamp}`;
-    const signature = await this.hmacSha256Hex(queryParams, config.apiSecret);
-    const url = `${baseUrl}${path}?${queryParams}&signature=${signature}`;
-
-    const headers: Record<string, string> = {
-      "X-MEXC-APIKEY": config.apiKey,
-      "Content-Type": "application/json"
-    };
-
     try {
-      console.log("Fetching from MEXC Auth URL:", url);
-      
-      const response = await fetch(url, { headers });
-      
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Erro MEXC Auth: ${response.status} - ${errText}`);
+      if (!config.apiKey || !config.apiSecret) {
+        throw new Error("MEXC autenticado requer API Key e Secret");
       }
 
-      const data = await response.json();
-      console.log("MEXC Auth API response:", data);
+      console.log("Fetching MEXC Auth order book via backend proxy");
 
-      if (data.code && data.code !== 200) {
-         throw new Error(data.msg || `Erro MEXC: ${data.code}`);
+      const { data, error } = await supabase.functions.invoke("mexc-proxy", {
+        body: {
+          symbol,
+          limit: 1000,
+          apiKey: config.apiKey,
+          apiSecret: config.apiSecret
+        }
+      });
+
+      if (error) {
+        // error.message is often generic; include details if available
+        throw new Error(`Falha MEXC (proxy): ${error.message}`);
+      }
+
+      console.log("MEXC proxy response:", data);
+
+      if (!data) {
+        throw new Error("Resposta vazia do proxy MEXC");
       }
 
       // MEXC Auth response format usually matches standard public API
-      let bids = data.bids || [];
-      let asks = data.asks || [];
+      let bids = (data as any).bids || [];
+      let asks = (data as any).asks || [];
 
       if (!bids.length && !asks.length) {
          // Try checking if it's wrapped
-         if (data.data) {
-             bids = data.data.bids || [];
-             asks = data.data.asks || [];
-         }
+        if ((data as any).data) {
+          bids = (data as any).data.bids || [];
+          asks = (data as any).data.asks || [];
+        }
       }
 
       return this.transformMexcData({ bids, asks }, config.symbol);
