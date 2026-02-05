@@ -584,12 +584,12 @@ class OrderBookService {
   }
 
   private async fetchMexcOrderBookAuth(config: ApiConfig): Promise<OrderBook> {
-    // Mapear símbolos específicos para MEXC
+    // Mapear símbolos específicos para MEXC (VOLTINU -> VOLT)
     const mexcSymbolMap: { [key: string]: string } = {
-      'VOLTINUUSDT': 'VOLTINUUSDT',
-      'VOLTINU-USDT': 'VOLTINUUSDT',
-      'VOLTINU_USDT': 'VOLTINUUSDT',
-      'VOLT-USDT': 'VOLTINUUSDT',
+      'VOLTINUUSDT': 'VOLTUSDT',
+      'VOLTINU-USDT': 'VOLTUSDT',
+      'VOLTINU_USDT': 'VOLTUSDT',
+      'VOLT-USDT': 'VOLTUSDT',
       'SHIBUSDT': 'SHIBUSDT',
       'LUNCUSDT': 'LUNCUSDT',
       'LUNAUSDT': 'LUNAUSDT',
